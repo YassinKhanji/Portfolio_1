@@ -1,2 +1,35 @@
-# Portfolio_1
- Contains two types of basic algo strategies (Trend Following and Mean Reversion)
+# Asyk Capital Repository
+![banner](FullStackWeb/src/images/banner.svg)
+
+This repository serves as a central storage and organization hub for all our files, projects, models, and notes related to algorithmic trading, full-stack web development, and more. It is not intended for development purposes, but rather for easy access and collaboration between team members.
+
+## Folder Structure
+
+### 1. `Technical Portfolio/`
+Contains all algorithmic technical trading models, strategies, and related data.
+
+### 2. `FullStackWeb/`
+All full-stack web development projects are stored here.
+
+### 3. `Notes/`
+Documentation, research, and general notes related to projects.
+
+### 4. `Resources/`
+External files, reference materials, and useful assets.
+
+### 5. `Attempts/`
+Contains all attempted development of strategies using QuantConnect to Build the portfolio. Quantconnect such sophisiticated systems and portfolio, so a custom backtesting and live trading framework was build.
+
+## Usage
+
+- This repo is meant for storage, not active development.
+- Add files to their respective directories based on project type.
+- Keep notes, backtests, and logs organized within relevant subfolders.
+  
+## Collaboration
+
+- Please follow the folder structure to maintain organization.
+- When adding notes or updates, ensure they're placed in the appropriate category.
+- For new projects or datasets, create a corresponding subfolder under the relevant directory.
+
+

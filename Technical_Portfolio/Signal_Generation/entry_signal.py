@@ -1,0 +1,127 @@
+import sys  
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import datetime as dt
+import os
+import pandas_ta as ta
+
+# Ensure the directories are in the system path
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Data_Management')))
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Universe_Selection')))
+
+# Import the modules
+from data import Data
+from coarse import Coarse_1 as Coarse
+from fine import Fine_1 as Fine
+from calculations import Calculations
+
+class Trend_Following():
+    
+    def __init__(self):
+        pass
+
+    def supertrend_signals(self, data, df, length = 7, multiplier = 3):
+        df, data = df.copy().unstack(), data.copy().unstack()
+
+        supertrend_results = {}
+        # Iterate through each coin
+        for coin in data.columns.get_level_values(1).unique():  # Get unique coin names
+            # Extract high, low, close for the coin
+            high, low, close = data["high", coin], data["low", coin], data["close", coin]
+
+            # Calculate Supertrend
+            supertrend = ta.supertrend(high, low, close, length, multiplier)
+
+            supertrend_results[coin] = supertrend
+
+        # Create a dataframe from the results
+        supertrend_df = pd.concat(supertrend_results, axis=1)
+        supertrend_df = supertrend_df.swaplevel(axis=1).sort_index(axis=1)
+
+        final_df = pd.concat([df, supertrend_df], axis = 1)
+
+        # Stack the dataframe and get position and trades columns
+        df = final_df.stack(future_stack=True)
+
+        return df
+    
+class Mean_Reversion():
+        
+    def __init__(self):
+        pass
+
+    def last_days_low(self, df, hourly_lookback = 1, daily_lookback = 1):
+        """
+        Assumes a stacked data that is hourly and has the columns: open, high, low, close
+
+        Parameters:
+        df: pd.DataFrame
+        hourly_lookback: int
+        daily_lookback: int
+        """
+
+        #Getting parameters
+        start_time = df.index.levels[0][0].strftime('%Y-%m-%d')
+        end_time = df.index.levels[0][-1].strftime('%Y-%m-%d')
+        symbols = df.index.levels[1].unique()
+
+        #Get the daily data and clean it
+        df_daily = Data(symbols, '1d', start_time, end_time).df
+        df_daily = df_daily[['open', 'high', 'low', 'close']]
+        df_daily = df_daily.unstack().shift(daily_lookback).stack(future_stack = True)
+        df_daily.columns = [f'shifted_daily_{col}' for col in df_daily.columns]
+
+        #Reindex the daily data to match the hourly data
+        df_daily_reindexed = df_daily.reindex(df.index)
+        df_daily_reindexed = df_daily_reindexed.unstack().ffill().stack(future_stack = True)
+
+        #Concatenate the dataframes
+        df = pd.concat([df, df_daily_reindexed], axis = 1)
+
+        #Now to generate a direction column:
+        # 1 if the close is above the daily close and last open is above the daily close and last close is below the daily close, else 0
+
+        #Before that, we need to make sure we are dealing with the same date when comparing the daily low with the hourly closes
+        _df = df[[]].unstack() #We don't need any of the columns, just the index (removing them to make sure it runs faster)
+        _df['date_only'] = _df.index.date # Extract the date part from the datetime index
+        _df['previous_date'] = _df['date_only'].shift(1) # Shift the date column by one row
+        _df['same_date'] = _df['date_only'] == _df['previous_date'] # Compare the current date with the previous date
+        _df = _df.stack(future_stack = True)
+
+        #Direction column
+        df['last_days_low'] = _df['same_date'] & (df['open'].shift(hourly_lookback) > df['shifted_daily_low']) &\
+        (df['close'].shift(hourly_lookback) < df['shifted_daily_low']) & (df['close'] > df['shifted_daily_low'])&\
+        (df['close'].shift(hourly_lookback + 1) > df['shifted_daily_low']) #Ensures that price is pulling back to the daily low,
+                                                                            #and not going from below it to above it
+        df['last_days_low'] = df['last_days_low'].astype(int)
+
+        return df
+
+
+    
+    def rsi_signals(self, data, df, length = 14, overbought = 70, oversold = 30):
+        df = df.unstack()
+        rsi_results = {}
+        # Iterate through each coin
+        for coin in data.columns.get_level_values(1).unique():  # Get unique coin names
+            # Extract high, low, close for the coin
+            close = data["close", coin]
+
+            # Calculate RSI
+            rsi = ta.rsi(close, length).iloc[:, :2]
+
+            # Generate signals
+            rsi_signal = pd.Series(np.where(rsi > overbought, -1, np.where(rsi < oversold, 1, 0)), index=rsi.index)
+
+            rsi_results[coin] = rsi_signal
+
+        # Create a dataframe from the results
+        rsi_df = pd.concat(rsi_results, axis=1)
+        rsi_df = rsi_df.swaplevel(axis=1).sort_index(axis=1)
+
+        final_df = pd.concat([df, rsi_df], axis = 1)
+
+        df = final_df.stack(future_stack=True)
+
+        return df
