@@ -1,4 +1,9 @@
+<<<<<<< Updated upstream
 # Portfolio_1 Repository
+=======
+# Asyk Capital Repository
+
+>>>>>>> Stashed changes
 ![banner](FullStackWeb/src/images/banner.svg)
 
 ## Folder Structure
@@ -6,21 +11,14 @@
 ### 1. `Technical Portfolio/`
 Contains all algorithmic technical trading models, strategies, and related data.
 
-### 2. `FullStackWeb/`
-All full-stack web development projects are stored here.
-
-### 3. `Notes/`
+### 2. `Notes/`
 Documentation, research, and general notes related to projects.
 
-### 4. `Resources/`
-External files, reference materials, and useful assets.
-
-### 5. `Attempts/`
+### 3. `Attempts/`
 Contains all attempted development of strategies using QuantConnect to Build the portfolio. Quantconnect such sophisiticated systems and portfolio, so a custom backtesting and live trading framework was build.
 
 ## Usage
 
-- This repo is meant for storage, not active development.
 - Add files to their respective directories based on project type.
 - Keep notes, backtests, and logs organized within relevant subfolders.
   
