@@ -1,10 +1,4 @@
-<<<<<<< Updated upstream
 # Portfolio_1 Repository
-=======
-# Asyk Capital Repository
-
->>>>>>> Stashed changes
-![banner](FullStackWeb/src/images/banner.svg)
 
 ## Folder Structure
 
