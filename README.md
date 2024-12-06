@@ -1,7 +1,5 @@
-# Asyk Capital Repository
+# Portfolio_1 Repository
 ![banner](FullStackWeb/src/images/banner.svg)
-
-This repository serves as a central storage and organization hub for all our files, projects, models, and notes related to algorithmic trading, full-stack web development, and more. It is not intended for development purposes, but rather for easy access and collaboration between team members.
 
 ## Folder Structure
 
