@@ -21,14 +21,14 @@ class Trend_Following():
     def __init__(self):
         pass
 
-    def supertrend_signals(self, data, df, length = 7, multiplier = 3):
-        df, data = df.copy().unstack(), data.copy().unstack()
+    def supertrend_signals(self, df, length = 7, multiplier = 3):
+        _df = df.copy().unstack()
 
         supertrend_results = {}
         # Iterate through each coin
-        for coin in data.columns.get_level_values(1).unique():  # Get unique coin names
+        for coin in _df.columns.get_level_values(1).unique():  # Get unique coin names
             # Extract high, low, close for the coin
-            high, low, close = data["high", coin], data["low", coin], data["close", coin]
+            high, low, close = _df["high", coin], _df["low", coin], _df["close", coin]
 
             # Calculate Supertrend
             supertrend = ta.supertrend(high, low, close, length, multiplier)
@@ -42,9 +42,9 @@ class Trend_Following():
         final_df = pd.concat([df, supertrend_df], axis = 1)
 
         # Stack the dataframe and get position and trades columns
-        df = final_df.stack(future_stack=True)
+        _df = final_df.stack(future_stack=True)
 
-        return df
+        return _df
     
 class Mean_Reversion():
         
@@ -100,13 +100,13 @@ class Mean_Reversion():
 
 
     
-    def rsi_signals(self, data, df, length = 14, overbought = 70, oversold = 30):
-        df = df.unstack()
+    def rsi_signals(self, df, length = 14, overbought = 70, oversold = 30):
+        _df = df.copy().unstack()
         rsi_results = {}
         # Iterate through each coin
-        for coin in data.columns.get_level_values(1).unique():  # Get unique coin names
+        for coin in _df.columns.get_level_values(1).unique():  # Get unique coin names
             # Extract high, low, close for the coin
-            close = data["close", coin]
+            close = _df["close", coin]
 
             # Calculate RSI
             rsi = ta.rsi(close, length).iloc[:, :2]
@@ -122,6 +122,6 @@ class Mean_Reversion():
 
         final_df = pd.concat([df, rsi_df], axis = 1)
 
-        df = final_df.stack(future_stack=True)
+        _df = final_df.stack(future_stack=True)
 
-        return df
+        return _df
