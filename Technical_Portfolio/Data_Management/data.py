@@ -74,7 +74,7 @@ class Data:
         for col in df.columns.levels[1]:
             df['returns', col] = df['close', col].pct_change()
             df['log_return', col] = np.log(1 + df['returns', col])
-            df["creturns", col] = df["returns", col].cumsum().apply(np.exp)
+            df["creturns", col] = df["log_return", col].cumsum().apply(np.exp)
             df['volume_in_dollars', col] = df['close', col] * df['volume', col]
 
         # Sort the columns index
