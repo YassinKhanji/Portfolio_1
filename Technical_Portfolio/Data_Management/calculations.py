@@ -71,7 +71,7 @@ class Calculations():
         _df = df.copy().unstack()
         for coin in _df['close'].columns:
             _df['session', coin] = np.sign(_df['trades', coin]).cumsum().shift().fillna(0)
-            _df[('session_compound', coin)] = _df['log_return', coin].groupby(_df['session', coin]).cumsum().apply(np.exp) - 1
+            _df[('session_compound', coin)] = _df['strategy', coin].groupby(_df['session', coin]).cumsum().apply(np.exp) - 1
         
         _df = _df.stack(future_stack=True)
 
