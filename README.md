@@ -23,3 +23,5 @@ Contains all attempted development of strategies using QuantConnect to Build the
 - For new projects or datasets, create a corresponding subfolder under the relevant directory.
 
 
+## Improvements:
+- An improvement on the clarity and quality of the code is to have functions in each module, instead of a class containing methods, that would have been much simpler as a way to call each function, as the '__init__' part of each class is not even used making it more difficult to read and use the code for no reason. 

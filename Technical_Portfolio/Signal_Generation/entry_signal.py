@@ -39,7 +39,7 @@ class Trend_Following():
         supertrend_df = pd.concat(supertrend_results, axis=1)
         supertrend_df = supertrend_df.swaplevel(axis=1).sort_index(axis=1)
 
-        final_df = pd.concat([df, supertrend_df], axis = 1)
+        final_df = pd.concat([_df, supertrend_df], axis = 1)
 
         # Stack the dataframe and get position and trades columns
         _df = final_df.stack(future_stack=True)

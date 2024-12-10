@@ -36,13 +36,14 @@ class Calculations():
         """
         return df['trades'].sum()
     
-    def strategy_returns(self, df):
+    def strategy_returns(self, df, costs_per_trade = 0.0):
         """
         Assumes a stacked dataframe
 
         return a dataframe with column that refers to the strategy returns
         """
         df['strategy'] = df['position'] * df['returns']
+        df['strategy'] = df['strategy'] - df['trades'] * costs_per_trade
         return df
     
     def strategy_creturns(self, df):
