@@ -24,7 +24,7 @@ class Calculations():
         for coin in df['close'].columns:
             if df['position', coin].iloc[0] ==1:
                 first_date = df.index[0]
-                df.loc[first_date, ('close', coin)]= 1
+                df.loc[first_date, ('trade', coin)]= 1
 
         df = df.stack(future_stack=True)
         
@@ -43,7 +43,7 @@ class Calculations():
         return a dataframe with column that refers to the strategy returns
         """
         df['strategy'] = df['position'] * df['returns']
-        df['strategy'] = df['strategy'] - df['trades'] * costs_per_trade
+        # df['strategy'] = df['strategy'] - df['trades'] * costs_per_trade #This applies only when there is a dollar cost
         return df
     
     def strategy_creturns(self, df):
