@@ -26,12 +26,23 @@ from entry_signal import Trend_Following, Mean_Reversion
 
 class Stop_Loss():
 
-    def __init__(self, df: pd.DataFrame, sl_type = 'atr', indicator_length = 0.0, sl_mult = 0.0, sl_percentage = 0.0, sl_dollar = 0.0):
+    def __init__(self, df: pd.DataFrame,
+                 sl_type = 'atr', 
+                 indicator_length = 0.0, 
+                 sl_mult = 0.0, 
+                 sl_percentage = 0.0, 
+                 sl_dollar = 0.0,
+                 exit_amount = 1.0):
         """
         Parameter:
             sl_type: string
                 can be: supertrend, atr, dollar, percent
-        Indicators currently implement: 
+            
+            exit_amount: float
+                amount to subtract from position (represents percentage to be sold when stop loss is executed).
+                useful for partial stop losses.
+
+        Indicators currently implemented: 
             Supertrend (for Dynamic SL)
             ATR (for fixed SL)
         """
@@ -41,12 +52,13 @@ class Stop_Loss():
         self.sl_percentage = sl_percentage
         self.sl_dollar = sl_dollar
         self.sl_type = sl_type
+        self.exit_amount = exit_amount
 
     def define_sl_pos(self, group, coin):
         if (group['low', coin] <= group['session_stop_loss', coin]).any():
             start = group[group['low', coin] <= group['session_stop_loss', coin]].index[0]
             stop = group.index[-2]
-            group.loc[start:stop, ("position", coin)] = 0
+            group.loc[start:stop, ("position", coin)] = 1 - self.exit_amount
             return group
         else:
             return group
@@ -93,7 +105,7 @@ class Stop_Loss():
         plt.tight_layout()
         plt.show()
 
-    def calculate_fixed_sl(self, plot = True):
+    def calculate_fixed_sl(self):
         """
         This function applies a fixed stop loss to the position column in the dataframe.
         Returns a stacked DataFrame.
@@ -106,7 +118,9 @@ class Stop_Loss():
         df = self.df.copy()
 
         #Calculate the ATR indicator
-        if self.sl_type.lower() == 'atr':
+        if self.sl_type.lower() == 'supertrend':
+            raise ValueError("Fixed stop loss does not currently support the supertrend indicator, use Dynamic Stop Loss")
+        elif self.sl_type.lower() == 'atr':
             #unstack dataframe
             _df = df.copy().unstack()
             for coin in _df.columns.levels[1]:
@@ -140,10 +154,6 @@ class Stop_Loss():
             # Group by both the session and coin, then pass the coin as an additional argument
             _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
 
-
-        if plot:
-            self.plot_sl(_df)
-
         #Stack the dataframe
         _df = _df.stack(future_stack=True)
 
@@ -154,7 +164,7 @@ class Stop_Loss():
     
     #Note: we are going to use the same define_sl_pos() and plot_sl() as before
 
-    def calculate_dynamic_sl(self, plot = True):
+    def calculate_dynamic_sl(self):
         """
         This function applies a dynamic stop loss to the position column in the dataframe.
         Returns a stacked DataFrame.
@@ -163,9 +173,12 @@ class Stop_Loss():
             plot: boolean
                 will plot the closing prices, position, as well as each of the session losses for each coin  
         """
-        _df = self.df.copy().unstack()
 
-        if self.sl_type.lower() == 'supertrend':
+        _df = self.df.copy().unstack()
+        if self.sl_type.lower() == 'atr':
+            raise ValueError('Dynamic stop loss does not currently support the ATR indicator, use Fixed Stop Loss')
+            
+        elif self.sl_type.lower() == 'supertrend':
             if not any('SUPERT'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the supertrend indicator
                 _df = Trend_Following().supertrend_signals(_df, self.indicator_length, self.sl_mult) #it contains supertrend values as well as signals
@@ -188,9 +201,6 @@ class Stop_Loss():
             # Group by both the session and coin, then pass the coin as an additional argument
             _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
 
-        if plot:
-            self.plot_sl(_df)
-
         _df = _df.stack(future_stack= True)
 
         return _df
@@ -198,20 +208,69 @@ class Stop_Loss():
     
     def apply_stop_loss(self, fixed = True, plot = True):
         """ 
-        This function applies the fixed stop loss to the dataframe and calculates the trades, strategy returns, strategy cumulative returns, and sessions.
+        This function applies the stop loss to the dataframe and calculates the trades, strategy returns, strategy cumulative returns, and sessions.
         it acts as a wrapper for the calculate_fixed_sl function, and make the necessary adjustments after that position column has changed
 
         Parameters:
             fixed: Boolean
-                specifies if the stop loss will be fixed (True) or dynamic (False)
+                specifies if the stop loss will be fixed (True) or dynamic (False).
+                This is essential if we are using sl_type of percent or dollar.
         """
         
-        _df = self.calculate_fixed_sl(plot) if fixed else self.calculate_dynamic_sl(plot)
+        _df = self.calculate_fixed_sl() if fixed else self.calculate_dynamic_sl()
+        if plot:
+            self.plot_sl(_df.unstack())
         _df = Calculations().trades(_df)
         _df = Calculations().strategy_returns(_df)
         _df = Calculations().strategy_creturns(_df)
         _df = Calculations().sessions(_df)
         return _df
+    
+
+class Take_Profit():
+
+    def __init__(self, 
+                 df, 
+                 tp_type = 'rr', 
+                 tp_mult = 2.0, 
+                 indicator_length = 0):
+        self.df = df
+        self.tp_type = tp_type
+        self.tp_mult = tp_mult
+        self.indicator_length = indicator_length
+
+    def define_tp_pos(self, group, coin):
+        pass
+
+    def plot_tp(self, df):
+        pass
+
+    def calculate_fixed_tp(self):
+        pass
+
+    def calculate_dynamic_tp(self):
+        pass
+
+    def apply_take_profit(self, fixed = True, plot = True):
+        """ 
+        This function applies the take profit to the ame and calculates the trades, strategy returns, strategy cumulative returns, and sessions.
+        it acts as a wrapper for the calculate_fixed_sl function, and make the necessary adjustments after that position column has changed
+
+        Parameters:
+            fixed: Boolean
+                specifies if the take profit will be fixed (True) or dynamic (False).
+                This is essential if we are using tp_type of percent or dollar.
+        """
+        
+        _df = self.calculate_fixed_tp() if fixed else self.calculate_dynamic_tp()
+        if plot:
+            self.plot_tp(_df.unstack())
+        _df = Calculations().trades(_df)
+        _df = Calculations().strategy_returns(_df)
+        _df = Calculations().strategy_creturns(_df)
+        _df = Calculations().sessions(_df)
+        return _df
+
     
 
     
