@@ -1,5 +1,7 @@
 # Portfolio_1 Repository
 
+![Modular Architecture]([Overview] Modular Architecture of a Trading System.drawio.png)
+
 ## Folder Structure
 
 ### 1. `Technical Portfolio/`
