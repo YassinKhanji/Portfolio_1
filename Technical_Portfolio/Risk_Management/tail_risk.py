@@ -32,7 +32,7 @@ class Stop_Loss():
                  sl_mult = 0.0, 
                  sl_percentage = 0.0, 
                  sl_dollar = 0.0,
-                 exit_amount = 1.0):
+                 exit_percent = 1.0):
         """
         Parameter:
             sl_type: string
@@ -52,25 +52,25 @@ class Stop_Loss():
         self.sl_percentage = sl_percentage
         self.sl_dollar = sl_dollar
         self.sl_type = sl_type
-        self.exit_amount = exit_amount
+        self.exit_percent = exit_percent
 
     def define_sl_pos(self, group, coin):
         if (group['low', coin] <= group['session_stop_loss', coin]).any():
             start = group[group['low', coin] <= group['session_stop_loss', coin]].index[0]
             stop = group.index[-2]
-            group.loc[start:stop, ("position", coin)] = 1 - self.exit_amount
+            group.loc[start:stop, ("position", coin)] = 1 - self.exit_percent
             return group
         else:
             return group
             
     def plot_sl(self, df):
         """
-        We assume an unstacked dataframe with the following columns:
+        Takes an unstacked dataframe with the following columns:
         - close
         - session_stop_loss
         """
         
-        _df = df.copy()
+        _df = df.copy().unstack()
         # Get unique coins
         unique_coins = _df.columns.get_level_values(1).unique()
 
@@ -115,22 +115,24 @@ class Stop_Loss():
                 will plot the closing prices, position, as well as each of the session losses for each coin  
         """
 
-        df = self.df.copy()
+        _df = self.df.copy()
 
         #Calculate the ATR indicator
         if self.sl_type.lower() == 'supertrend':
             raise ValueError("Fixed stop loss does not currently support the supertrend indicator, use Dynamic Stop Loss")
         elif self.sl_type.lower() == 'atr':
             #unstack dataframe
-            _df = df.copy().unstack()
-            for coin in _df.columns.levels[1]:
-                high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
-                _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
+            _df = _df.copy().unstack()
+            if not any('SUPERT'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
+                #Calculate the ATR indicator
+                for coin in _df.columns.levels[1]:
+                    high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
+                    _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
 
-            _df = _df.iloc[self.indicator_length:] #Slice the dataframe to remove the NaN values from the ATR calculation
-            #It is better to do the above as we might get NaN values in other columns, so this might remove many needed rows
-            #Note: This is done at this first stage right after we calculate all the indicators, We need to create a function in the 
-                #future to remove the largest length needed for the calculations as this would be essential to warm up the data needed.
+                _df = _df.iloc[self.indicator_length:] #Slice the dataframe to remove the NaN values from the ATR calculation
+                #It is better to do the above as we might get NaN values in other columns, so this might remove many needed rows
+                #Note: This is done at this first stage right after we calculate all the indicators, We need to create a function in the 
+                    #future to remove the largest length needed for the calculations as this would be essential to warm up the data needed.
             
             #Calculate the stop loss
             _df = _df.stack(future_stack = True)
@@ -174,11 +176,12 @@ class Stop_Loss():
                 will plot the closing prices, position, as well as each of the session losses for each coin  
         """
 
-        _df = self.df.copy().unstack()
+        _df = self.df.copy()
         if self.sl_type.lower() == 'atr':
             raise ValueError('Dynamic stop loss does not currently support the ATR indicator, use Fixed Stop Loss')
             
         elif self.sl_type.lower() == 'supertrend':
+            _df = _df.unstack()
             if not any('SUPERT'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the supertrend indicator
                 _df = Trend_Following().supertrend_signals(_df, self.indicator_length, self.sl_mult) #it contains supertrend values as well as signals
@@ -187,7 +190,9 @@ class Stop_Loss():
             
             #In all cases, rename the supertrend long column to be used as a stop loss
             for coin in _df.columns.levels[1]:
-                _df['stop_loss', coin] = _df[f'SUPERTl_{self.indicator_length}_{float(self.sl_mult)}', coin]  
+                _df['stop_loss', coin] = _df[f'SUPERTl_{self.indicator_length}_{float(self.sl_mult)}', coin] 
+
+            _df = _df.stack(future_stack = True) 
 
         elif self.sl_type.lower() == 'percent':
             _df['stop_loss'] = _df['close'] * (1 - self.sl_percentage)
@@ -195,9 +200,10 @@ class Stop_Loss():
         elif self.sl_type.lower() == 'dollar':
             _df['stop_loss'] = _df['close'] - self.sl_dollar
 
+
+        _df = _df.unstack()
         for coin in _df.columns.levels[1]:
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform(lambda x: x)
-
             # Group by both the session and coin, then pass the coin as an additional argument
             _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
 
@@ -219,7 +225,7 @@ class Stop_Loss():
         
         _df = self.calculate_fixed_sl() if fixed else self.calculate_dynamic_sl()
         if plot:
-            self.plot_sl(_df.unstack())
+            self.plot_sl(_df)
         _df = Calculations().trades(_df)
         _df = Calculations().strategy_returns(_df)
         _df = Calculations().strategy_creturns(_df)
@@ -233,23 +239,155 @@ class Take_Profit():
                  df, 
                  tp_type = 'rr', 
                  tp_mult = 2.0, 
-                 indicator_length = 0):
+                 indicator_length = 0,
+                 tp_percent = 0.02,
+                 tp_dollar = 100,
+                 exit_percent = 1):
+        """
+        Parameters:
+            tp_type: string
+                can be: rr, atr, dollar, percent
+            tp_mult: float
+                multiplier for the take profit
+            tp_percent: float
+                percentage for the take profit
+            tp_dollar: float
+                dollar amount for the take profit
+            exit_percent: float
+                amount to subtract from position (represents percentage to be sold when take profit is executed).
+                useful for partial take profits.
+        """
         self.df = df
         self.tp_type = tp_type
         self.tp_mult = tp_mult
         self.indicator_length = indicator_length
+        self.tp_percent = tp_percent
+        self.tp_dollar = tp_dollar
+        self.exit_percent = exit_percent
 
-    def define_tp_pos(self, group, coin):
-        pass
+
+    def define_tp_pos(group, coin):
+        if (group['high', coin] <= group['session_take_profit', coin]).any():
+            start = group[group['high', coin] <= group['session_take_profit', coin]].index[0]
+            stop = group.index[-2]
+            group.loc[start:stop, ("position", coin)] = 1 - self.exit_percent
+            return group
+        else:
+            return group
+        
 
     def plot_tp(self, df):
-        pass
+        _df = df.copy().unstack()
+        # Get unique coins
+        unique_coins = _df.columns.get_level_values(1).unique()
+
+        # Determine grid dimensions
+        num_coins = len(unique_coins)
+        cols = 5 # You can choose the number of columns
+        rows = math.ceil(num_coins / cols)
+
+        # Create the subplots grid
+        fig, axes = plt.subplots(nrows=rows, ncols=cols, figsize=(16, rows * 5))
+
+        # Flatten the axes array for easy iteration
+        axes = axes.flatten() #this makes the axes a 1D array, so we can iterate over it without going for another loop
+
+        # Plot each coin
+        for i, coin in enumerate(unique_coins):
+            _df[[['close', coin], ['session_take_profit', coin]]].plot(
+                ax=axes[i],
+                title=f'{coin} Close and Take Profit',
+                color=['blue', 'green'],
+                legend = None
+            )
+            axes[i].set_xlabel('Date')
+            axes[i].set_ylabel('Closing Price')
+            # axes[i].legend(title='Coin')
+
+        # Remove any unused subplots
+        for j in range(i + 1, len(axes)):
+            fig.delaxes(axes[j])
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.show()
 
     def calculate_fixed_tp(self):
-        pass
+        _df = self.df.copy().unstack()
+
+        if self.tp_type.lower() == 'rr':
+            if not any('stop_loss' in col for col in _df.columns.get_level_values(0)):
+                raise ValueError('No stop loss column found in the dataframe, add a stop loss to add this type of take profit')
+            
+            for coin in _df.columns.levels[1]:
+                _df['take_profit', coin] = _df['close', coin] + self.tp_mult * (_df['close', coin] - _df['stop_loss', coin])
+            
+            _df = _df.stack(future_stack = True)
+
+        elif self.tp_type.lower() == 'atr':
+            if not any('atr' in col for col in _df.columns.get_level_values(0)):
+                for coin in _df.columns.get_level_values(1):
+                    #Calculate the atr indicator
+                    high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
+                    _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
+                
+                #Remove Warm up
+                _df = _df.iloc[self.indicator_length:]
+
+            _df = _df.stack(future_stack = True)
+            _df['take_profit'] = _df['close'] + self.tp_mult * _df['atr']
+            
+        elif self.tp_type.lower() == 'dollar':
+            _df = _df.stack(future_stack = True)
+            _df['take_profit'] = _df['close'] + self.tp_dollar
+            
+        elif self.tp_type.lower() == 'percent':
+            _df = _df.stack(future_stack = True)
+            _df['take_profit'] = _df['close'] * (1 + self.tp_percent)
+
+        #Apply the session take profit
+        _df = _df.unstack()
+        for coin in _df.columns.get_level_values(1):
+            _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).transform('first')
+
+            #Define the take profit position
+            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
+
+        return _df.stack(future_stack = True)
 
     def calculate_dynamic_tp(self):
-        pass
+        _df = self.df.copy().unstack()
+
+        if self.tp_type.lower() == 'atr':
+            if not any('atr' in col for col in _df.columns.get_level_values(0)):
+                for coin in _df.columns.get_level_values(1):
+                    #Calculate the atr indicator
+                    high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
+                    _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
+                
+                #Remove Warm up
+                _df = _df.iloc[self.indicator_length:]
+            
+            _df = _df.stack(future_stack = True)
+            _df['take_profit'] = _df['close'] + self.tp_mult * _df['atr']
+
+        elif self.tp_type.lower() == 'percent':
+            _df = _df.stack(future_stack = True)
+            _df['take_profit'] = _df['close'] * (1 + self.tp_percent)
+
+        elif self.tp_type.lower() == 'dollar':
+            _df = _df.stack(future_stack = True)
+            _df['take_profit'] = _df['close'] + self.tp_dollar
+
+        #Apply the session take profit
+        _df = _df.unstack()
+        for coin in _df.columns.get_level_values(1):
+            _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).cummin()
+
+            #Define the take profit position
+            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
+        
+        return _df.stack(future_stack = True)
 
     def apply_take_profit(self, fixed = True, plot = True):
         """ 
@@ -264,7 +402,7 @@ class Take_Profit():
         
         _df = self.calculate_fixed_tp() if fixed else self.calculate_dynamic_tp()
         if plot:
-            self.plot_tp(_df.unstack())
+            self.plot_tp(_df)
         _df = Calculations().trades(_df)
         _df = Calculations().strategy_returns(_df)
         _df = Calculations().strategy_creturns(_df)
