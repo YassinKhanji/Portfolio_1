@@ -87,7 +87,7 @@ class Stop_Loss():
 
         # Plot each coin
         for i, coin in enumerate(unique_coins):
-            _df[[['close', coin], ['session_stop_loss', coin]]].plot(
+            ax = _df[[['close', coin], ['session_stop_loss', coin]]].plot(
                 ax=axes[i],
                 title=f'{coin} Close and Stop Loss',
                 color=['blue', 'green'],
@@ -96,6 +96,8 @@ class Stop_Loss():
             axes[i].set_xlabel('Date')
             axes[i].set_ylabel('Closing Price')
             # axes[i].legend(title='Coin')
+            ax2 = ax.twinx()
+            _df['position', coin].plot(ax = ax2, alpha = 0.5)
 
         # Remove any unused subplots
         for j in range(i + 1, len(axes)):
@@ -123,7 +125,7 @@ class Stop_Loss():
         elif self.sl_type.lower() == 'atr':
             #unstack dataframe
             _df = _df.copy().unstack()
-            if not any('SUPERT'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
+            if not any('atr'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the ATR indicator
                 for coin in _df.columns.levels[1]:
                     high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
@@ -266,7 +268,7 @@ class Take_Profit():
         self.exit_percent = exit_percent
 
 
-    def define_tp_pos(group, coin):
+    def define_tp_pos(self, group, coin):
         if (group['high', coin] <= group['session_take_profit', coin]).any():
             start = group[group['high', coin] <= group['session_take_profit', coin]].index[0]
             stop = group.index[-2]
