@@ -20,7 +20,7 @@ Building a strategy can be broken down into a few main parts, which act as modul
 
 3. **Risk Management**: Managing risk is crucial. This part covers things like position sizing, stop-losses, and diversification, as well as when to exit a trade. The aim is to protect against large, unexpected losses.
 
-4. **Optimization**: Here, we fine-tune the strategy’s parameters to improve its performance. Techniques like Walk-Forward Optimization (WFO) or Reinforcement Learning can help make the strategy more adaptable.
+4. **Portfolio Optimization**: Here, we fine-tune the strategy’s parameters to improve its performance. Techniques like Walk-Forward Optimization (WFO) or Reinforcement Learning can help make the strategy more adaptable.
 
 5. **Stress-Testing and Validation**: Rigorous testing, including simulations and scenario analysis, ensures that the strategy can handle real-world challenges like taxes, inflation, and extreme market conditions.
 

@@ -8,13 +8,9 @@ The **Risk Management** module is a cornerstone of any robust trading system. Wi
 
 Tail risk refers to the potential for significant losses caused by rare and extreme market events, such as flash crashes, liquidity crises, or geopolitical shocks. This module identifies tail-risk scenarios and implements strategies to minimize exposure, such as using options, stop-loss mechanisms, or diversification strategies.
 
-### Trade Allocation
+### Position Sizing
 
-This module calculates the optimal allocation for each trade based on prevailing market conditions and key metrics such as:
-- **Volatility**: Higher volatility may warrant smaller allocations to manage risk.
-- **Market Regime**: Allocations are adjusted depending on whether the market is trending, mean-reverting, or in a transitional phase.
-- **Asset Correlation**: Ensures diversification to reduce the impact of overconcentration in highly correlated instruments.
+This module calculates the optimal position sizing for each trade based on prevailing market conditions and key metrics such as:
 
-### Overconcentration Monitoring
-
-The module tracks exposure to individual assets or sectors, flagging cases where overconcentration could increase risk. It ensures balanced portfolios by enforcing predefined limits on position sizes.
+- **Volatility**: Higher volatility may warrant smaller allocations to manage risk (e.g. maintaining a consistent risk).
+- **High Impact Events**: Other high impact factors that may introduce tail risk for a specific trading instrument.
