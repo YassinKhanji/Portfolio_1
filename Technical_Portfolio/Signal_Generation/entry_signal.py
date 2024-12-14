@@ -78,8 +78,9 @@ class Mean_Reversion():
         df_daily.columns = [f'shifted_daily_{col}' for col in df_daily.columns]
 
         #Reindex the daily data to match the hourly data
-        df_daily_reindexed = df_daily.reindex(df.index)
-        df_daily_reindexed = df_daily_reindexed.unstack().ffill().stack(future_stack = True)
+        df_daily_reindexed = df_daily.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
+        .ffill().stack(future_stack = True)
+
 
         #Concatenate the dataframes
         df = pd.concat([df, df_daily_reindexed], axis = 1)
@@ -88,21 +89,21 @@ class Mean_Reversion():
         # 1 if the close is above the daily close and last open is above the daily close and last close is below the daily close, else 0
 
         #Before that, we need to make sure we are dealing with the same date when comparing the daily low with the hourly closes
-        _df = df[[]].unstack() #We don't need any of the columns, just the index (removing them to make sure it runs faster)
-        _df['date_only'] = _df.index.date # Extract the date part from the datetime index
+        _df = df[[]] #We don't need any of the columns, just the index (removing them to make sure it runs faster)
+        _df['date_only'] = _df.index.get_level_values(0).strftime('%Y-%m-%d') # Extract the date part from the datetime index
         _df['previous_date'] = _df['date_only'].shift(1) # Shift the date column by one row
         _df['same_date'] = _df['date_only'] == _df['previous_date'] # Compare the current date with the previous date
-        _df = _df.stack(future_stack = True)
-
-        #Direction column
-        df['last_days_low'] = _df['same_date'] & (df['open'].shift(hourly_lookback) > df['shifted_daily_low']) &\
-        (df['close'].shift(hourly_lookback) < df['shifted_daily_low']) & (df['close'] > df['shifted_daily_low'])&\
-        (df['close'].shift(hourly_lookback + 1) > df['shifted_daily_low']) #Ensures that price is pulling back to the daily low,
-                                                                            #and not going from below it to above it
-        df['last_days_low'] = df['last_days_low'].astype(int)
+        df['same_date']  = _df['same_date']
+        df = df.unstack() #We have to unstack because we will be shifting columns later on for every single coin
 
         
 
+        #Direction column
+        for coin in df.columns.get_level_values(1).unique():
+            df['last_days_low', coin] = df['same_date', coin] & (df['open', coin].shift(hourly_lookback) > df['shifted_daily_low', coin]) &\
+            (df['close', coin].shift(hourly_lookback) < df['shifted_daily_low', coin]) & (df['close', coin] > df['shifted_daily_low', coin]) &\
+            (df['close', coin].shift(hourly_lookback + 1) > df['shifted_daily_low', coin]) #Ensures that price is pulling back to the daily low, and not going from below it to above it
+        df['last_days_low'] = df['last_days_low'].astype(int)
         return df
 
 
