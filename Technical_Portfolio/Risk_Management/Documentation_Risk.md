@@ -28,3 +28,5 @@ Other advanced methods may involve considerations such as correlations between a
 - **(Anti) Martingale Method**: Adjusts position sizes after wins or losses. This powerful strategy can enhance performance but must align with the trading strategy. For instance, anti-martingale sizing is well-suited to mean-reversion strategies, which typically feature high win rates with small gains punctuated by occasional large losses. Here, increasing position sizes during winning streaks and downsizing during losses can optimize outcomes.  
 - **Scaling In/Out**: Gradually entering or exiting a position in small increments rather than all at once. This strategy mitigates large losses when positioned incorrectly and is widely used to adapt to market movements.  
 - **Adaptive Sizing**: Dynamically adjusts position sizes based on market conditions, recent performance, or changes in volatility.  
+
+The above might be applied on all types of scales, from within the trade management to the portfolio management

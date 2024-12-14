@@ -44,6 +44,11 @@ class Trend_Following():
         # Stack the dataframe and get position and trades columns
         _df = final_df.stack(future_stack=True)
 
+        condition = _df[f'SUPERTd_{str_length}_{float(str_mult)}'] == 1
+        #Adjust the position column
+        _df['position'] = np.where(condition, 1, 0)
+        _df['position'] = _df['position'].shift(len(_df.index.get_level_values(1).unique())).fillna(0)
+
         return _df
     
 class Mean_Reversion():
@@ -95,6 +100,8 @@ class Mean_Reversion():
         (df['close'].shift(hourly_lookback + 1) > df['shifted_daily_low']) #Ensures that price is pulling back to the daily low,
                                                                             #and not going from below it to above it
         df['last_days_low'] = df['last_days_low'].astype(int)
+
+        
 
         return df
 
