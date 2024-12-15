@@ -61,20 +61,11 @@ class Calculations():
 
 
     def sessions(self, df):
-        """
-        Assumes a stacked dataframe.
-
-        return a dataframe with column that refers to the session, where each session is a unique trade 
-            (useful for risk management where we can group by each session and apply a function for each trade individually) 
-
-        Adds/Labels Trading Sessions and their compound returns.
-        """
         _df = df.copy().unstack()
-        
         for coin in _df['close'].columns:
             _df['session', coin] = np.sign(_df['trades', coin]).cumsum().shift().fillna(0)
-            _df[('overall_session_return', coin)] = _df['strategy', coin].groupby(_df['session', coin]).transform(lambda x: (x + 1).prod() - 1)
-            _df[('session_compound', coin)] = _df['strategy', coin].groupby(_df['session', coin]).cumsum().apply(np.exp) - 1
+            _df[('session_compound', coin)] = _df['strategy', coin].groupby(_df['session', coin]).cumsum().apply(np.exp)
+            _df[('overall_session_return', coin)] = _df['session_compound', coin].groupby(_df['session', coin]).transform(lambda x: x.iloc[-1] - 1)
         
         _df = _df.stack(future_stack=True)
 

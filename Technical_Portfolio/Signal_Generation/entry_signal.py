@@ -44,7 +44,7 @@ class Trend_Following():
         # Stack the dataframe and get position and trades columns
         _df = final_df.stack(future_stack=True)
 
-        condition = _df[f'SUPERTd_{str_length}_{float(str_mult)}'] == 1
+        condition = _df[f'SUPERTd_{length}_{float(multiplier)}'] == 1
         #Adjust the position column
         _df['position'] = np.where(condition, 1, 0)
         _df['position'] = _df['position'].shift(len(_df.index.get_level_values(1).unique())).fillna(0)

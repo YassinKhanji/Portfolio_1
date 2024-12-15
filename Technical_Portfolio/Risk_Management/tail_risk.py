@@ -87,7 +87,7 @@ class Stop_Loss():
 
         # Plot each coin
         for i, coin in enumerate(unique_coins):
-            ax = _df[[['close', coin], ['session_stop_loss', coin]]].plot(
+            ax = _df[[['low', coin], ['session_stop_loss', coin]]].plot(
                 ax=axes[i],
                 title=f'{coin} Close and Stop Loss',
                 color=['blue', 'green'],
@@ -269,8 +269,8 @@ class Take_Profit():
 
 
     def define_tp_pos(self, group, coin):
-        if (group['high', coin] <= group['session_take_profit', coin]).any():
-            start = group[group['high', coin] <= group['session_take_profit', coin]].index[0]
+        if (group['high', coin] >= group['session_take_profit', coin]).any():
+            start = group[group['high', coin] >= group['session_take_profit', coin]].index[0]
             stop = group.index[-2]
             group.loc[start:stop, ("position", coin)] = 1 - self.exit_percent
             return group
@@ -296,7 +296,7 @@ class Take_Profit():
 
         # Plot each coin
         for i, coin in enumerate(unique_coins):
-            _df[[['close', coin], ['session_take_profit', coin]]].plot(
+            ax = _df[[['high', coin], ['session_take_profit', coin]]].plot(
                 ax=axes[i],
                 title=f'{coin} Close and Take Profit',
                 color=['blue', 'green'],
@@ -305,6 +305,8 @@ class Take_Profit():
             axes[i].set_xlabel('Date')
             axes[i].set_ylabel('Closing Price')
             # axes[i].legend(title='Coin')
+            ax2 = ax.twinx()
+            _df['position', coin].plot(ax = ax2, alpha = 0.5)
 
         # Remove any unused subplots
         for j in range(i + 1, len(axes)):
