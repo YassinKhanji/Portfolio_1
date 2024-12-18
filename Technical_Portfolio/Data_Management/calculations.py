@@ -83,30 +83,35 @@ class Metrics():
         self.tp_year = (self.df['close'].count() / ((self.df.index[-1] - self.df.index[0]).days / 365.25))
 
     def print_performance(self, leverage = False):
-        ''' Calculates and prints various Performance Metrics.
+        ''' 
+        Calculates and prints various Performance Metrics.
         '''
         
-        data = self.df.copy()
-        
-        to_analyze = data['strategy']
-        
-        strategy_multiple = round(self.calculate_multiple(to_analyze), 6)
-        bh_multiple =       round(self.calculate_multiple(data['returns']), 6)
-        outperf =           round(strategy_multiple - bh_multiple, 6)
-        cagr =              round(self.calculate_cagr(to_analyze), 6)
-        ann_mean =          round(self.calculate_annualized_mean(to_analyze), 6)
-        ann_std =           round(self.calculate_annualized_std(to_analyze), 6)
-        sharpe =            round(self.calculate_sharpe(to_analyze), 6)
-        sortino =           round(self.calculate_sortino(to_analyze), 6)
-        max_drawdown =      round(self.calculate_max_drawdown(to_analyze), 6)
-        calmar =            round(self.calculate_calmar(to_analyze), 6)
-        max_dd_duration =   round(self.calculate_max_dd_duration(to_analyze), 6)
-        kelly_criterion =   round(self.calculate_kelly_criterion(to_analyze), 6)
+        strategy_multiple =     round(self.calculate_multiple(bh = False), 6)
+        bh_multiple =           round(self.calculate_multiple(bh = True), 6)
+        outperf =               round(strategy_multiple - bh_multiple, 6)
+        cagr =                  round(self.calculate_cagr(), 6)
+        ann_mean =              round(self.calculate_annualized_mean(), 6)
+        ann_std =               round(self.calculate_annualized_std(), 6)
+        sharpe =                round(self.calculate_sharpe(), 6)
+        sortino =               round(self.calculate_sortino(), 6)
+        max_drawdown =          round(self.calculate_max_drawdown(), 6)
+        calmar =                round(self.calculate_calmar(), 6)
+        max_dd_duration =       round(self.calculate_max_dd_duration(), 6)
+        avg_dd_duration =       round(self.calculate_avg_dd_duration(), 6)
+        kelly_criterion =       round(self.calculate_kelly_criterion(), 6)
+        volatility =            round(self.calculate_volatility(), 6)
+        win_rate =              round(self.calculate_trades_win_rate(), 2)
+        daily_win_rate =        round(self.calculate_daily_win_rate(), 6)
+        avg_win =               round(self.calculate_avg_win(), 6)
+        avg_loss =              round(self.calculate_avg_loss(), 6)
+        avg_return_per_trade =  round(self.calculate_avg_return_per_trade(), 6)
+        percentage_expectancy = round(self.calculate_percentage_expectancy(), 6)
+        monthly_expectancy =    round(self.calculate_monthly_expectancy(), 6)
+
         
         print(100 * "=")
-        print("SIMPLE CONTRARIAN STRATEGY | INSTRUMENT = {} | Freq: {} | WINDOW = {}".format(self.symbol, self.freq, self.window))
-        print(100 * "-")
-        #print("\n")
+        print("\n")
         print("PERFORMANCE MEASURES:")
         print("\n")
         print("Multiple (Strategy):         {}".format(strategy_multiple))
@@ -122,20 +127,33 @@ class Metrics():
         print("Maximum Drawdown:            {}".format(max_drawdown))
         print("Calmar Ratio:                {}".format(calmar))
         print("Max Drawdown Duration:       {} Days".format(max_dd_duration))
-        print("Average Drawdown Duration:   {} Days".format(max_dd_duration))
+        print("Average Drawdown Duration:   {} Days".format(avg_dd_duration))
+        print("Volatility:                  {} Days".format(volatility))
+        print("Win Rate:                    {}".format(win_rate))
+        print("Daily Win Rate:              {}".format(daily_win_rate))
+        print("Average Win:                 {}".format(avg_win))
+        print("Average Loss:                {}".format(avg_loss))
+        print("Average Return per Trade:    {}".format(avg_return_per_trade))
+        print("Percentage Expectancy:       {}".format(percentage_expectancy))
+        print("Monthly Expectancy:          {}".format(monthly_expectancy))
         print("Kelly Criterion:             {}".format(kelly_criterion))
         
         print(100 * "=")
 
-    def calculate_multiple(self):
+    def calculate_multiple(self, bh = False):
         """
         The multiple is a measure of the total return of the strategy.
 
         Typically >1 is considered good, <1 should not be considered.
         """
+        if bh:
+            series = self.df['returns']
+        else:
+            series = self.df['strategy']
+
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = np.exp(self.df['strategy', coin].sum()) 
+            results[coin] = np.exp(series.sum()) 
 
         return results
 
@@ -183,7 +201,7 @@ class Metrics():
 
         return results
 
-    def avg_dd_duration(self):
+    def calculate_avg_dd_duration(self):
         """
         The average drawdown duration is the average time it takes for the strategy to recover from a drawdown.
 
