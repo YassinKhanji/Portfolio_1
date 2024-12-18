@@ -77,7 +77,10 @@ class Metrics():
 
     def __init__(self, df):
 
-        self.df = df
+        self.df = df.copy().unstack()
+
+        # This would give the number of time periods in a year (e.g. monthly data would be 12)
+        self.tp_year = (self.df['close'].count() / ((self.df.index[-1] - self.df.index[0]).days / 365.25))
 
     def print_performance(self, leverage = False):
         ''' Calculates and prints various Performance Metrics.
@@ -119,42 +122,97 @@ class Metrics():
         print("Maximum Drawdown:            {}".format(max_drawdown))
         print("Calmar Ratio:                {}".format(calmar))
         print("Max Drawdown Duration:       {} Days".format(max_dd_duration))
+        print("Average Drawdown Duration:   {} Days".format(max_dd_duration))
         print("Kelly Criterion:             {}".format(kelly_criterion))
         
         print(100 * "=")
 
     def calculate_multiple(self):
         """
-        Expectations for the multiple:
-        Trend-Following: Positive and steady annual returns. Aim for 10-15% annualized returns.
-        Mean Reversion: Positive returns with lower volatility, 8-12% annualized returns.
-        Portfolio: 10% or higher for a well-balanced portfolio.
-        Bullish Market: Higher returns expected (15-20%).
-        Bearish Market: Lower returns, possibly negative for trend-following.
+        The multiple is a measure of the total return of the strategy.
+
+        Typically >1 is considered good, <1 should not be considered.
         """
-        pass
+        results = {}
+        for coin in self.df['strategy'].columns:
+            results[coin] = np.exp(self.df['strategy', coin].sum()) 
+
+        return results
 
     def calculate_annualized_mean(self):
         """
-        Expectations for the annualized mean:
-        Trend-Following: Moderate risk, aim for 10-15% annualized volatility.
-        Mean Reversion: Lower risk, 8-12% annualized volatility.
-        Portfolio: Should be around 10-15% for diversification.
-        Bullish Market: Typically lower volatility (10-12%).
-        Bearish Market: Higher volatility during drawdowns (15-20%).
+        The annualized mean is a measure of the average return of the strategy.
+
+        Typically >10% is considered good for Bull Markets, >2 - 3% for Bear Markets.
         """ 
     
-        pass
+        results = {}
+        for coin in self.df['strategy'].columns:
+            results[coin] = self.df['strategy'].mean() * self.tp_year
+
+        return results
     
     def calculate_annualized_std(self):
-        pass 
+        """
+        The standard deviation is a measure of the dispersion of returns.
+
+        Typically <20% is considered good for Bull Markets, <10% for Bear Markets (even for aggressive portfolios)
+        """
+        results = {}
+        for coin in self.df['strategy'].columns:
+            results[coin] = self.df['strategy'].std() * np.sqrt(self.tp_year)
 
     def calculate_max_dd_duration(self):
-        pass
+        """
+        The maximum drawdown duration is the time it takes for the strategy to recover from a drawdown (does not have to be the maximum)
+
+        Typically 3 - 6 months is considered to be good for a maximum duration
+        """
+        results = {}
+        for coin in self.df['strategy'].columns:
+            series = self.df['strategy', coin]
+            creturns = series.cumsum().apply(np.exp)
+            cummax = creturns.cummax()
+            drawdown = (cummax - creturns)/cummax
+
+            begin = drawdown[drawdown == 0].index
+            end = begin[1:]
+            end = end.append(pd.DatetimeIndex([drawdown.index[-1]]))
+            periods = end - begin
+            results[coin] = periods.max().days
+
+        return results
+
+    def avg_dd_duration(self):
+        """
+        The average drawdown duration is the average time it takes for the strategy to recover from a drawdown.
+
+        Typically 1 - 3 months is considered to be good for an average duration
+        
+        """
+        results = {}
+        for coin in self.df['strategy'].columns:
+            series = self.df['strategy', coin]
+            creturns = series.cumsum().apply(np.exp)
+            cummax = creturns.cummax()
+            drawdown = (cummax - creturns)/cummax
+
+            begin = drawdown[drawdown == 0].index
+            end = begin[1:]
+            end = end.append(pd.DatetimeIndex([drawdown.index[-1]]))
+            periods = end - begin
+            results[coin] = periods.mean().days
+
+        return results
+            
 
     def calculate_cagr(self):
         """"
-        We are going to be using quantstats 
+        Compound Annual Growth Rate (CAGR) measures the mean annual growth rate of an investment
+         over a specified time period longer than one year.
+
+        CAGR is really dependent on the investment vehicule. For example, for a stock, 10%-15% is considered good.
+        For crypto, it is much higher, typically >50%.
         """
         results = {}
         for coin in self.df['strategy'].columns:
@@ -163,6 +221,11 @@ class Metrics():
         return results
     
     def calculate_volatility(self):
+        """
+        Volatility is a measure of the dispersion of returns. It is a measure of the risk of the strategy.
+
+        Investors typically prefer lower volatility between 10-15% for the overall portfolio
+        """
         results = {}
         for coin in self.df['strategy'].columns:
             results[coin] = qs.stats.volatility(self.df['strategy', coin].apply(np.exp) - 1)
@@ -171,7 +234,10 @@ class Metrics():
     
     def calculate_sharpe(self):
         """
-        
+        Sharpe Ratio measures the excess return (or risk premium) per unit of total volatility (both upside and downside)
+        Some may refer to it as the smoothness of the equity curve.
+
+        Typically >1 is considered good for both trend-following and mean-reversion. <0.5 should not be considered
         """
         results = {}
         for coin in self.df['strategy'].columns:
@@ -278,9 +344,13 @@ class Metrics():
         This reflects the average return per trade = total PnL / number of trades
 
         Typically Positive, typically >2% for trend-following, >1% for mean-reversion.
-        
         """
-        pass
+        results = {}
+        for coin in self.df['strategy'].columns:
+            active_trades = self.df[self.df['position', coin] == 1]
+            results[coin] = active_trades['overall_session_return', coin].mean()
+
+        return results
 
     def calculate_percentage_expectancy(self):
         """
