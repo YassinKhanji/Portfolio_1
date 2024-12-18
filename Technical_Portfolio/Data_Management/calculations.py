@@ -3,6 +3,7 @@ import datetime as dt
 import pandas as pd
 import requests
 import quantstats_lumi as qs
+import math
 
 class Calculations():
     def __init__(self):
@@ -123,9 +124,26 @@ class Metrics():
         print(100 * "=")
 
     def calculate_multiple(self):
+        """
+        Expectations for the multiple:
+        Trend-Following: Positive and steady annual returns. Aim for 10-15% annualized returns.
+        Mean Reversion: Positive returns with lower volatility, 8-12% annualized returns.
+        Portfolio: 10% or higher for a well-balanced portfolio.
+        Bullish Market: Higher returns expected (15-20%).
+        Bearish Market: Lower returns, possibly negative for trend-following.
+        """
         pass
 
     def calculate_annualized_mean(self):
+        """
+        Expectations for the annualized mean:
+        Trend-Following: Moderate risk, aim for 10-15% annualized volatility.
+        Mean Reversion: Lower risk, 8-12% annualized volatility.
+        Portfolio: Should be around 10-15% for diversification.
+        Bullish Market: Typically lower volatility (10-12%).
+        Bearish Market: Higher volatility during drawdowns (15-20%).
+        """ 
+    
         pass
     
     def calculate_annualized_std(self):
@@ -140,77 +158,155 @@ class Metrics():
         """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.cagr(self.df['cstrategy', coin])
+            results[coin] = qs.stats.cagr(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_volatility(self):
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.volatility(self.df['cstrategy', coin])
+            results[coin] = qs.stats.volatility(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_sharpe(self):
+        """
+        
+        """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.sharpe(self.df['cstrategy', coin])
+            results[coin] = qs.stats.sharpe(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_sortino(self):
+        """
+        Sortino ratio is a variation of the Sharpe ratio that only factors in the downside risk.
+
+        Typically >1.5 for both trend-following and mean-reversion.
+        """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.sortino(self.df['cstrategy', coin])
+            results[coin] = qs.stats.sortino(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_max_drawdown(self):
+        """
+        Depends on the strategy used. Typically <20% for trend-following, <10% for mean-reversion.
+        Depends on the investor's risk tolerance. Typically <30% should not be considered.
+        """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.max_drawdown(self.df['cstrategy', coin])
+            results[coin] = qs.stats.max_drawdown(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_calmar(self):
+        """
+        calmar = Annualized return / Max Drawdown
+
+        Typically >1 for trend-following, >1.5 for mean-reversion.
+
+        A calmar ration less than 1 should not be considered.
+        """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.calmar(self.df['cstrategy', coin])
+            results[coin] = qs.stats.calmar(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_kelly_criterion(self):
+        """
+        This is a measure of the optimal bet size that a trader should make.
+        The higher, the better.
+
+        Typically Values should be positive, generally between 0.1 and 0.5.
+        """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.kelly_criterion(self.df['cstrategy', coin]) 
+            results[coin] = qs.stats.kelly_criterion(self.df['strategy', coin].apply(np.exp) - 1) 
         
         return results
     
-    def calculate_win_rate(self):
+    def calculate_trades_win_rate(self):
+        """
+        Typically >50% for mean-reversion and anything for trend-following.
+        (depends on the profit factor)
+        """
+        results = {}
+        for coin in self.df['strategy'].columns:
+            winning_trades = (self.df['overall_session_return', coin] > 0).sum()
+            total_trades = math.ceil(self.df['session', coin].iloc[-1] / 2) #we divide by 2 because a session can indicates being in a trade and not being in a trade
+            results[coin] = winning_trades / total_trades
+
+        return results
+    
+    def calculate_daily_win_rate(self):
+        """
+        Typically >50% in both strategies.
+        """
         results = {}
         #Note that the winrate that qs uses is using the daily returns. However, we are looking for returns per trade.
         # Therefore, this should be changed. 
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.win_rate(self.df['strategy', coin])
+            results[coin] = qs.stats.win_rate(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_avg_win(self):
+        """
+        """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.avg_win(self.df['strategy', coin])
+            results[coin] = qs.stats.avg_win(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
     def calculate_avg_loss(self):
+        """
+        """
+        # this is a comment
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = qs.stats.avg_loss(self.df['strategy', coin])
+            results[coin] = qs.stats.avg_loss(self.df['strategy', coin].apply(np.exp) - 1)
 
         return results
     
-    def calculate_avg_trade_return(self):
+    def calculate_avg_return_per_trade(self):
+        """
+        This reflects the average return per trade = total PnL / number of trades
+
+        Typically Positive, typically >2% for trend-following, >1% for mean-reversion.
+        
+        """
         pass
 
-    def calculate_expectancy(self):
-        pass
+    def calculate_percentage_expectancy(self):
+        """
+        This calculates the expectancy of the strategy per coin.
+        Expectancy = (Win Rate * Average Win) - (Losing Rate * Average Loss)
+
+        Typically any expectancy greater than 0 is considered good (it depends on the number of trades).
+        """
+        results = {}
+        for coin in self.df['strategy'].columns:
+            win_rate = self.calculate_trades_win_rate(self.df)[coin]
+            losing_rate = 1 - win_rate
+            average_win = self.df[(self.df['position', coin] == 1) & (self.df['overall_session_return', coin] >= 0)]['overall_session_return', coin].mean()
+            average_loss = self.df[(self.df['position', coin] == 1) & (self.df['overall_session_return', coin] <= 0)]['overall_session_return', coin].mean()
+            expectancy = (win_rate * average_win) - (losing_rate * average_loss)
+            results[coin] = expectancy
+
+        return results  
+    
+    def calculate_monthly_expectancy(self):
+        """
+        Typically: 4-6% monthly in bullish, lower for mean-reversion in bearish.
+        """
+        results = {}
+        total_trades = math.ceil(self.df['session', coin].iloc[-1] / 2)
+        for coin in self.df['strategy'].columns:
+            results[coin] = self.calculate_percentage_expectancy(self.df)[coin] * (total_trades / 12)
+
+        return results
