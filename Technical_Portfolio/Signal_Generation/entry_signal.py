@@ -6,15 +6,17 @@ import datetime as dt
 import os
 import pandas_ta as ta
 
+
 # Ensure the directories are in the system path
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Data_Management')))
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Universe_Selection')))
+sys.path.append(os.path.abspath(os.path.abspath(os.path.join(os.getcwd(), '..', 'Portfolio_1', 'Technical_Portfolio', 'Data_Management'))))
+sys.path.append(os.path.abspath(os.path.abspath(os.path.join(os.getcwd(), '..', 'Portfolio_1', 'Technical_Portfolio', 'Universe_Selection'))))
 
 # Import the modules
 from data import Data
 from coarse import Coarse_1 as Coarse
 from fine import Fine_1 as Fine
 from calculations import Calculations
+
 
 class Trend_Following():
     
@@ -44,10 +46,9 @@ class Trend_Following():
         # Stack the dataframe and get position and trades columns
         _df = final_df.stack(future_stack=True)
 
-        condition = _df[f'SUPERTd_{length}_{float(multiplier)}'] == 1
-        #Adjust the position column
-        _df['position'] = np.where(condition, 1, 0)
-        _df['position'] = _df['position'].shift(len(_df.index.get_level_values(1).unique())).fillna(0)
+        #Generate signals
+        signal = (_df[f'SUPERTd_{length}_{float(multiplier)}'] == 1) & (_df[f'SUPERTd_{length}_{float(multiplier)}'].shift() == -1)
+        _df['signals_str'] = pd.Series(np.where(signal, 1, 0)).shift(1)
 
         return _df
     
@@ -103,7 +104,9 @@ class Mean_Reversion():
             df['last_days_low', coin] = df['same_date', coin] & (df['open', coin].shift(hourly_lookback) > df['shifted_daily_low', coin]) &\
             (df['close', coin].shift(hourly_lookback) < df['shifted_daily_low', coin]) & (df['close', coin] > df['shifted_daily_low', coin]) &\
             (df['close', coin].shift(hourly_lookback + 1) > df['shifted_daily_low', coin]) #Ensures that price is pulling back to the daily low, and not going from below it to above it
-        df['last_days_low'] = df['last_days_low'].astype(int)
+
+        df['signals_ldl'] = df['last_days_low'].astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
+
         return df
 
 

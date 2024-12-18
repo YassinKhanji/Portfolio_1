@@ -1,7 +1,6 @@
 import numpy as np
 import datetime as dt
 import pandas as pd
-import requests
 import quantstats_lumi as qs
 import math
 
@@ -72,7 +71,7 @@ class Calculations():
         _df = _df.stack(future_stack=True)
 
         return _df
-
+    
 class Metrics():
 
     def __init__(self, df):
@@ -82,35 +81,42 @@ class Metrics():
         # This would give the number of time periods in a year (e.g. monthly data would be 12)
         self.tp_year = (self.df['close'].count() / ((self.df.index[-1] - self.df.index[0]).days / 365.25))
 
-    def print_performance(self, leverage = False):
+    def print_performance(self, coin):
         ''' 
         Calculates and prints various Performance Metrics.
+
+        The coin desired must be specified.
         '''
         
-        strategy_multiple =     round(self.calculate_multiple(bh = False), 6)
-        bh_multiple =           round(self.calculate_multiple(bh = True), 6)
+        strategy_multiple =     round(self.calculate_multiple(bh = False)[coin], 6)
+        bh_multiple =           round(self.calculate_multiple(bh = True)[coin], 6)
         outperf =               round(strategy_multiple - bh_multiple, 6)
-        cagr =                  round(self.calculate_cagr(), 6)
-        ann_mean =              round(self.calculate_annualized_mean(), 6)
-        ann_std =               round(self.calculate_annualized_std(), 6)
-        sharpe =                round(self.calculate_sharpe(), 6)
-        sortino =               round(self.calculate_sortino(), 6)
-        max_drawdown =          round(self.calculate_max_drawdown(), 6)
-        calmar =                round(self.calculate_calmar(), 6)
-        max_dd_duration =       round(self.calculate_max_dd_duration(), 6)
-        avg_dd_duration =       round(self.calculate_avg_dd_duration(), 6)
-        kelly_criterion =       round(self.calculate_kelly_criterion(), 6)
-        volatility =            round(self.calculate_volatility(), 6)
-        win_rate =              round(self.calculate_trades_win_rate(), 2)
-        daily_win_rate =        round(self.calculate_daily_win_rate(), 6)
-        avg_win =               round(self.calculate_avg_win(), 6)
-        avg_loss =              round(self.calculate_avg_loss(), 6)
-        avg_return_per_trade =  round(self.calculate_avg_return_per_trade(), 6)
-        percentage_expectancy = round(self.calculate_percentage_expectancy(), 6)
-        monthly_expectancy =    round(self.calculate_monthly_expectancy(), 6)
+        cagr =                  round(self.calculate_cagr()[coin], 6)
+        ann_mean =              round(self.calculate_annualized_mean()[coin], 6)
+        ann_std =               round(self.calculate_annualized_std()[coin], 6)
+        sharpe =                round(self.calculate_sharpe()[coin], 6)
+        sortino =               round(self.calculate_sortino()[coin], 6)
+        max_drawdown =          round(self.calculate_max_drawdown()[coin], 6)
+        calmar =                round(self.calculate_calmar()[coin], 6)
+        max_dd_duration =       round(self.calculate_max_dd_duration()[coin], 6)
+        avg_dd_duration =       round(self.calculate_avg_dd_duration()[coin], 6)
+        kelly_criterion =       round(self.calculate_kelly_criterion()[coin], 6)
+        volatility =            round(self.calculate_volatility()[coin], 6)
+        win_rate =              round(self.calculate_trades_win_rate()[coin], 2)
+        daily_win_rate =        round(self.calculate_daily_win_rate()[coin], 6)
+        avg_win =               round(self.calculate_avg_win()[coin], 6)
+        avg_loss =              round(self.calculate_avg_loss()[coin], 6)
+        avg_return_per_trade =  round(self.calculate_avg_return_per_trade()[coin], 6)
+        percentage_expectancy = round(self.calculate_percentage_expectancy()[coin], 6)
+        monthly_expectancy =    round(self.calculate_monthly_expectancy()[coin], 6)
 
         
         print(100 * "=")
+        print("\n")
+        print(f"All coins: {list(self.df.columns.get_level_values(1).unique())}")
+        print("\n")
+        print("From all available coins: {} was chosen".format(coin))
+        print(100 * "-")
         print("\n")
         print("PERFORMANCE MEASURES:")
         print("\n")
@@ -146,13 +152,15 @@ class Metrics():
 
         Typically >1 is considered good, <1 should not be considered.
         """
-        if bh:
-            series = self.df['returns']
-        else:
-            series = self.df['strategy']
+
 
         results = {}
         for coin in self.df['strategy'].columns:
+            if bh:
+                series = self.df['returns', coin]
+            else:
+                series = self.df['strategy', coin]
+                
             results[coin] = np.exp(series.sum()) 
 
         return results
@@ -166,7 +174,7 @@ class Metrics():
     
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = self.df['strategy'].mean() * self.tp_year
+            results[coin] = self.df['strategy', coin].mean() * self.tp_year[coin]
 
         return results
     
@@ -178,7 +186,9 @@ class Metrics():
         """
         results = {}
         for coin in self.df['strategy'].columns:
-            results[coin] = self.df['strategy'].std() * np.sqrt(self.tp_year)
+            results[coin] = self.df['strategy', coin].std() * np.sqrt(self.tp_year[coin])
+
+        return results
 
     def calculate_max_dd_duration(self):
         """
@@ -379,7 +389,7 @@ class Metrics():
         """
         results = {}
         for coin in self.df['strategy'].columns:
-            win_rate = self.calculate_trades_win_rate(self.df)[coin]
+            win_rate = self.calculate_trades_win_rate()[coin]
             losing_rate = 1 - win_rate
             average_win = self.df[(self.df['position', coin] == 1) & (self.df['overall_session_return', coin] >= 0)]['overall_session_return', coin].mean()
             average_loss = self.df[(self.df['position', coin] == 1) & (self.df['overall_session_return', coin] <= 0)]['overall_session_return', coin].mean()
@@ -393,8 +403,8 @@ class Metrics():
         Typically: 4-6% monthly in bullish, lower for mean-reversion in bearish.
         """
         results = {}
-        total_trades = math.ceil(self.df['session', coin].iloc[-1] / 2)
         for coin in self.df['strategy'].columns:
-            results[coin] = self.calculate_percentage_expectancy(self.df)[coin] * (total_trades / 12)
+            total_trades = math.ceil(self.df['session', coin].iloc[-1] / 2)
+            results[coin] = self.calculate_percentage_expectancy()[coin] * (total_trades / 12)
 
         return results

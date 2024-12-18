@@ -13,10 +13,9 @@ import pandas_ta as ta
 
 
 # Ensure the directories are in the system path
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Data_Management')))
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Universe_Selection')))
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Signal_Generation')))
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Risk_Management')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Universe_Selection')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Signal_Generation')))
 
 # Import the modules
 from data import Data
