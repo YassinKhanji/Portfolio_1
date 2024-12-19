@@ -8,7 +8,15 @@ class Calculations():
     def __init__(self):
         pass
 
-    def upsample(self, df, freq='1H'):
+    def downsample(self, df, low_freq='1D'):
+        """
+        This will be used to resample higher frequency data to lower frequency (e.g. hourly to daily data)
+        when performing universe selection (much faster instead of redownloading the daily data)
+
+        Parameters:
+            df: Stacked DataFrame
+            freq: The frequency that the dataframe will be converted to
+        """
         pass
 
     def trades(self, df):
@@ -16,10 +24,14 @@ class Calculations():
         Assumes a stacked dataframe
         will generate a column that tracks only when position changes
         """
-        df = df.unstack()
+        if isinstance(df.index, pd.MultiIndex):
+            stacked = True
+            df = df.unstack()
+        
 
         for coin in df['close'].columns:
-            df['trades', coin] = df['position', coin].diff().fillna(0).abs()
+            full_trade = df['position', coin].diff().fillna(0).abs() 
+            df['trades', coin] = full_trade if full_trade == 1 else 0 #This will account when we take partials
 
         #A case where we start with a position, we need to add a trade
         for coin in df['close'].columns:
@@ -27,48 +39,95 @@ class Calculations():
                 first_date = df.index[0]
                 df.loc[first_date, ('trade', coin)]= 1
 
-        df = df.stack(future_stack=True)
+        if stacked:
+            df = df.stack(future_stack=True)
         
         return df
     
     def nbr_trades(self, df):
         """
-        Assumes a stacked dataframe.
+        Takes both a stacked and unstacked dataframe
         """
-        return df['trades'].sum()
+        if isinstance(df.columns, pd.MultiIndex):
+            _df = df.copy().stack(future_stack=True)
+
+        _df['trades'].sum()
+
+        return _df['trades'].sum()
+    
+    def calculate_price_returns(self, df):
+        """
+        Should be called when price column is modified
+        This will calculate the log price returns for each coin
+        """
+        if isinstance(df.index, pd.MultiIndex):
+            stacked = True
+            df = df.unstack()
+
+        for coin in df.columns.get_level_values(1).unique:
+            price = df['price', coin]
+            df['log_price_return', coin] = np.log(price/price.shift(1))
+
+        if stacked:
+            df = df.stack(future_stack=True)
+
+        return df
+
     
     def strategy_returns(self, df, costs_per_trade = 0.0):
         """
-        Assumes a stacked dataframe
+        Takes both a stacked and unstacked dataframe
 
         return a dataframe with column that refers to the strategy returns
         """
-        df['strategy'] = df['position'] * df['returns']
+        if isinstance(df.columns, pd.MultiIndex):
+            stacked = False
+            df = df.stack(future_stack=True)
+        
+        df = self.calculate_price_returns(df)
+        df['strategy'] = df['position'] * df['log_price_return']
         # df['strategy'] = df['strategy'] - df['trades'] * costs_per_trade #This applies only when there is a dollar cost
+
+        if not stacked:
+            df = df.unstack()
         return df
     
     def strategy_creturns(self, df):
         """
-        Assumes a stacked dataframe
+        Takes both a stacked and unstacked dataframe
 
         return a dataframe with column that refers to the strategy cumulative returns
         """
-        df = df.copy().unstack()
+        if isinstance(df.index, pd.MultiIndex):
+            stacked = True
+            df = df.copy().unstack()
+
         for coin in df['close'].columns:
             df['cstrategy', coin] = df['strategy', coin].cumsum().apply(np.exp)
 
-        df = df.stack(future_stack=True)
+        if stacked:
+            df = df.stack(future_stack=True)
+
         return df
 
 
     def sessions(self, df):
-        _df = df.copy().unstack()
+        """
+        Takes both a stacked and unstacked dataframe
+        
+        return a dataframe in the same format that it was given
+        """
+        if isinstance(df.index, pd.MultiIndex):
+            stacked = True
+            _df = df.copy().unstack()
+
         for coin in _df['close'].columns:
             _df['session', coin] = np.sign(_df['trades', coin]).cumsum().shift().fillna(0)
             _df[('session_compound', coin)] = _df['strategy', coin].groupby(_df['session', coin]).cumsum().apply(np.exp)
             _df[('overall_session_return', coin)] = _df['session_compound', coin].groupby(_df['session', coin]).transform(lambda x: x.iloc[-1] - 1)
         
-        _df = _df.stack(future_stack=True)
+        if stacked:
+            _df = _df.stack(future_stack=True)
 
         return _df
     

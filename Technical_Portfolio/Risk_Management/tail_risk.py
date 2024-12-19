@@ -55,10 +55,11 @@ class Stop_Loss():
         self.exit_percent = exit_percent
 
     def define_sl_pos(self, group, coin):
+        current_pos = group['position', coin].iloc[-1]
         if (group['low', coin] <= group['session_stop_loss', coin]).any():
             start = group[group['low', coin] <= group['session_stop_loss', coin]].index[0]
             stop = group.index[-2]
-            group.loc[start:stop, ("position", coin)] = 1 - self.exit_percent
+            group.loc[start:stop, ("position", coin)] = current_pos - current_pos * self.exit_percent
             return group
         else:
             return group
@@ -269,13 +270,23 @@ class Take_Profit():
 
 
     def define_tp_pos(self, group, coin):
+        """
+        This will apply the take profit if a high goes above it to the position column in the dataframe.
+        """
+        current_pos = group['position', coin].iloc[-1]
         if (group['high', coin] >= group['session_take_profit', coin]).any():
             start = group[group['high', coin] >= group['session_take_profit', coin]].index[0]
             stop = group.index[-2]
-            group.loc[start:stop, ("position", coin)] = 1 - self.exit_percent
+            group.loc[start:stop, ("position", coin)] = current_pos - current_pos * self.exit_percent
             return group
         else:
             return group
+    
+    def define_tp_signal(self, group, coin):
+        """
+        We are looking for a high that is above the current take profit (of this session)
+        """
+        pass
         
 
     def plot_tp(self, df):
@@ -316,7 +327,7 @@ class Take_Profit():
         plt.tight_layout()
         plt.show()
 
-    def calculate_fixed_tp(self):
+    def calculate_fixed_tp(self, signal_only = True):
         _df = self.df.copy().unstack()
 
         if self.tp_type.lower() == 'rr':
@@ -355,11 +366,14 @@ class Take_Profit():
             _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).transform('first')
 
             #Define the take profit position
-            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
+            if signal_only:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_signal(group, coin))
+            else:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
 
         return _df.stack(future_stack = True)
 
-    def calculate_dynamic_tp(self):
+    def calculate_dynamic_tp(self, signal_only = True):
         _df = self.df.copy().unstack()
 
         if self.tp_type.lower() == 'atr':
@@ -389,7 +403,10 @@ class Take_Profit():
             _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).cummin()
 
             #Define the take profit position
-            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
+            if signal_only:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_signal(group, coin))
+            else:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
         
         return _df.stack(future_stack = True)
 
@@ -402,6 +419,9 @@ class Take_Profit():
             fixed: Boolean
                 specifies if the take profit will be fixed (True) or dynamic (False).
                 This is essential if we are using tp_type of percent or dollar.
+            plot: Boolean
+                will plot the closing prices, position, as well as each of the session take profits for each coin
+        Note: This assumes calculate fixed tp is called 
         """
         
         _df = self.calculate_fixed_tp() if fixed else self.calculate_dynamic_tp()
@@ -412,6 +432,39 @@ class Take_Profit():
         _df = Calculations().strategy_creturns(_df)
         _df = Calculations().sessions(_df)
         return _df
+    
+
+class Exit():
+    def __init__(self, df, exit_percent = 1):
+        """
+        This class will apply exit signals to the position column in the dataframe.
+        Exit signals will be merged from custom exit signals (ex: when supertrend change direction), stop loss and take profit.
+
+        This will particularly be useful for live trading as exit signals from either risk management may come at any order. 
+            So instead of applying custom exit -> stop loss -> take profit, we are going to be applying which comes first. 
+            Although, whenever we are looking for to explicitely use a stop loss while ignoring other risk measures, we can directly implent that by using methods from the 
+
+        Parameters:
+            exit_percent: float
+                amount to subtract from position (represents percentage to be sold when exit is executed).
+                useful for partial exits.
+            df : stacked pd.DataFrame
+        """
+        self.df = df
+        self.exit_percent = exit_percent
+
+    def merge_exit_signal(self):
+        """
+        Merging exit signals from all the risk management measures (take profit, stop loss, custom exit signals)
+        """
+        pass
+    
+    def apply_exit_signals(self):
+        """
+        Applying the exit signals to the position and recalculating the trades,
+        strategy returns, strategy cumulative returns, and sessions.
+        """
+        pass
 
     
 

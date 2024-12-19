@@ -48,7 +48,7 @@ class Trend_Following():
 
         #Generate signals
         signal = (_df[f'SUPERTd_{length}_{float(multiplier)}'] == 1) & (_df[f'SUPERTd_{length}_{float(multiplier)}'].shift() == -1)
-        _df['signals_str'] = pd.Series(np.where(signal, 1, 0)).shift(1)
+        _df['entry_signals'] = pd.Series(np.where(signal, 1, 0)).shift(1)
 
         return _df
     
@@ -105,34 +105,6 @@ class Mean_Reversion():
             (df['close', coin].shift(hourly_lookback) < df['shifted_daily_low', coin]) & (df['close', coin] > df['shifted_daily_low', coin]) &\
             (df['close', coin].shift(hourly_lookback + 1) > df['shifted_daily_low', coin]) #Ensures that price is pulling back to the daily low, and not going from below it to above it
 
-        df['signals_ldl'] = df['last_days_low'].astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
+        df['entry_signals'] = df['last_days_low'].astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
 
         return df
-
-
-    
-    def rsi_signals(self, df, length = 14, overbought = 70, oversold = 30):
-        _df = df.copy().unstack()
-        rsi_results = {}
-        # Iterate through each coin
-        for coin in _df.columns.get_level_values(1).unique():  # Get unique coin names
-            # Extract high, low, close for the coin
-            close = _df["close", coin]
-
-            # Calculate RSI
-            rsi = ta.rsi(close, length).iloc[:, :2]
-
-            # Generate signals
-            rsi_signal = pd.Series(np.where(rsi > overbought, -1, np.where(rsi < oversold, 1, 0)), index=rsi.index)
-
-            rsi_results[coin] = rsi_signal
-
-        # Create a dataframe from the results
-        rsi_df = pd.concat(rsi_results, axis=1)
-        rsi_df = rsi_df.swaplevel(axis=1).sort_index(axis=1)
-
-        final_df = pd.concat([df, rsi_df], axis = 1)
-
-        _df = final_df.stack(future_stack=True)
-
-        return _df

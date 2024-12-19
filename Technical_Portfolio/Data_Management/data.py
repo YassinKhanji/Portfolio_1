@@ -71,11 +71,18 @@ class Data:
     def prepare_data(self):
         df = self.df.copy()
 
-        for col in df.columns.levels[1]:
-            df['returns', col] = df['close', col].pct_change()
-            df['log_return', col] = np.log(1 + df['returns', col])
-            df["creturns", col] = df["log_return", col].cumsum().apply(np.exp)
-            df['volume_in_dollars', col] = df['close', col] * df['volume', col]
+        for coin in df.columns.levels[1]:
+            df['returns', coin] = df['close', coin].pct_change()
+            df['log_return', coin] = np.log(1 + df['returns', coin])
+            df["creturns", coin] = df["log_return", coin].cumsum().apply(np.exp)
+            df['price', coin] = df['close', coin] #This will refer to the prices that the strategies will be running on
+                # Will eventually be modified when applying risk management
+                #Essential when applying exit signals, as stop losses and take profits (mainly) won't exit at the closing
+                # but would rather exit at the high or the low 
+                #Usually, we would upsample close data to the lowest frequency possible to get more accurate results
+                # Although in highly volatilite markets, this would provide wrong expectations. So it is more effecient to
+                # actually use the exact price we exited at
+            df['volume_in_dollars', coin] = df['close', coin] * df['volume', coin]
 
         # Sort the columns index
         df = df.stack(level=1, future_stack= True) #Stacking the index columns
