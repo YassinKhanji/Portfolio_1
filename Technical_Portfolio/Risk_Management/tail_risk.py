@@ -32,7 +32,8 @@ class Stop_Loss():
                  sl_mult = 0.0, 
                  sl_percentage = 0.0, 
                  sl_dollar = 0.0,
-                 exit_percent = 1.0):
+                 exit_percent = 1.0, 
+                 signal_only = True):
         """
         Parameter:
             sl_type: string
@@ -41,6 +42,9 @@ class Stop_Loss():
             exit_amount: float
                 amount to subtract from position (represents percentage to be sold when stop loss is executed).
                 useful for partial stop losses.
+
+            signal_only: boolean
+                if True, the stop loss will only be a signal and not a position change
 
         Indicators currently implemented: 
             Supertrend (for Dynamic SL)
@@ -53,6 +57,7 @@ class Stop_Loss():
         self.sl_dollar = sl_dollar
         self.sl_type = sl_type
         self.exit_percent = exit_percent
+        self.signal_only = signal_only
 
     def define_sl_pos(self, group, coin):
         current_pos = group['position', coin].iloc[-1]
@@ -63,6 +68,17 @@ class Stop_Loss():
             return group
         else:
             return group
+    
+    def define_sl_signal(self, group, coin):
+        """
+        We are looking for a high that is above the current take profit (of this session)
+        """
+        group[("exit_signal_sl", coin)] = 0  # Initialize with 0
+        if (group['low', coin] <= group['session_stop_loss', coin]).any():
+            start = group[group['low', coin] <= group['session_stop_loss', coin]].index[0]
+            group.loc[start, ("exit_signal_sl", coin)] = self.exit_percent
+            group.loc[start, ('price', coin)] = group.loc[start, ('session_stop_loss', coin)]
+        return group
             
     def plot_sl(self, df):
         """
@@ -157,7 +173,11 @@ class Stop_Loss():
         for coin in _df.columns.levels[1]:
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform('first')
             # Group by both the session and coin, then pass the coin as an additional argument
-            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
+            if self.signal_only:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_signal(group, coin))
+            else:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
+
 
         #Stack the dataframe
         _df = _df.stack(future_stack=True)
@@ -208,7 +228,11 @@ class Stop_Loss():
         for coin in _df.columns.levels[1]:
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform(lambda x: x)
             # Group by both the session and coin, then pass the coin as an additional argument
-            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
+            if self.signal_only:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_signal(group, coin))
+            else:
+                _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_sl_pos(group, coin))
+
 
         _df = _df.stack(future_stack= True)
 
@@ -245,7 +269,8 @@ class Take_Profit():
                  indicator_length = 0,
                  tp_percent = 0.02,
                  tp_dollar = 100,
-                 exit_percent = 1):
+                 exit_percent = 1,
+                 signal_only = True):
         """
         Parameters:
             tp_type: string
@@ -259,6 +284,8 @@ class Take_Profit():
             exit_percent: float
                 amount to subtract from position (represents percentage to be sold when take profit is executed).
                 useful for partial take profits.
+            signal_only: boolean
+                if True, the take profit will only be a signal and not a position change
         """
         self.df = df
         self.tp_type = tp_type
@@ -267,6 +294,7 @@ class Take_Profit():
         self.tp_percent = tp_percent
         self.tp_dollar = tp_dollar
         self.exit_percent = exit_percent
+        self.signal_only = signal_only
 
 
     def define_tp_pos(self, group, coin):
@@ -286,7 +314,12 @@ class Take_Profit():
         """
         We are looking for a high that is above the current take profit (of this session)
         """
-        pass
+        group[("exit_signal_tp", coin)] = 0  # Initialize with 0
+        if (group['high', coin] >= group['session_take_profit', coin]).any():
+            start = group[group['high', coin] >= group['session_take_profit', coin]].index[0]
+            group.loc[start, ("exit_signal_tp", coin)] = self.exit_percent
+            group.loc[start, ('price', coin)] = group.loc[start, ('session_take_profit', coin)]
+        return group
         
 
     def plot_tp(self, df):
@@ -327,7 +360,7 @@ class Take_Profit():
         plt.tight_layout()
         plt.show()
 
-    def calculate_fixed_tp(self, signal_only = True):
+    def calculate_fixed_tp(self):
         _df = self.df.copy().unstack()
 
         if self.tp_type.lower() == 'rr':
@@ -366,14 +399,14 @@ class Take_Profit():
             _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).transform('first')
 
             #Define the take profit position
-            if signal_only:
+            if self.signal_only:
                 _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_signal(group, coin))
             else:
                 _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
 
         return _df.stack(future_stack = True)
 
-    def calculate_dynamic_tp(self, signal_only = True):
+    def calculate_dynamic_tp(self):
         _df = self.df.copy().unstack()
 
         if self.tp_type.lower() == 'atr':
@@ -403,7 +436,7 @@ class Take_Profit():
             _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).cummin()
 
             #Define the take profit position
-            if signal_only:
+            if self.signal_only:
                 _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_signal(group, coin))
             else:
                 _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.define_tp_pos(group, coin))
@@ -434,39 +467,6 @@ class Take_Profit():
         return _df
     
 
-class Exit():
-    def __init__(self, df, exit_percent = 1):
-        """
-        This class will apply exit signals to the position column in the dataframe.
-        Exit signals will be merged from custom exit signals (ex: when supertrend change direction), stop loss and take profit.
-
-        This will particularly be useful for live trading as exit signals from either risk management may come at any order. 
-            So instead of applying custom exit -> stop loss -> take profit, we are going to be applying which comes first. 
-            Although, whenever we are looking for to explicitely use a stop loss while ignoring other risk measures, we can directly implent that by using methods from the 
-
-        Parameters:
-            exit_percent: float
-                amount to subtract from position (represents percentage to be sold when exit is executed).
-                useful for partial exits.
-            df : stacked pd.DataFrame
-        """
-        self.df = df
-        self.exit_percent = exit_percent
-
-    def merge_exit_signal(self):
-        """
-        Merging exit signals from all the risk management measures (take profit, stop loss, custom exit signals)
-        """
-        pass
-    
-    def apply_exit_signals(self):
-        """
-        Applying the exit signals to the position and recalculating the trades,
-        strategy returns, strategy cumulative returns, and sessions.
-        """
-        pass
-
-    
 
     
             

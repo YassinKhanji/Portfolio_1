@@ -116,6 +116,14 @@ class Calculations():
 
         return _df
     
+    def merge_cols(self, df, cols, use_clip = True):
+        common = 'exit_signal'
+        cols = [col for col in df.columns if common in col]
+        df[common] = df[cols].sum(axis = 1)
+        if use_clip:
+            df[common] = df[common].clip(0, 1)    
+        return df
+    
 class Metrics():
 
     def __init__(self, df):
