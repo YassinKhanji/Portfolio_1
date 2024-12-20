@@ -22,7 +22,7 @@ from calculations import Calculations
 from coarse import Coarse_1 as Coarse
 from fine import Fine_1 as Fine
 from entry_signal import Trend_Following, Mean_Reversion
-from tail_risk import Stop_Loss, Take_Profit, Exit
+from tail_risk import Stop_Loss, Take_Profit
 
 class Position():
     def __init__(self, df, _min = 0, _max = np.inf):
@@ -51,13 +51,13 @@ class Position():
         """
         position = np.where(series == 1, 1, 0)
         position = pd.Series(position, index = series.index)
-        position = position.shift(test.index.get_level_values(1).nunique()).fillna(0) 
+        position = position.shift(self.df.index.get_level_values(1).nunique()).fillna(0) 
         return position
 
 
-    def calculate_position(self, df, _min = 0, _max = np.inf):
+    def calculate_position(self, df):
         """
-        assumes a unstacked dataframe
+        assumes a stacked dataframe
 
         Calculates the 'Position' column, accumulating positions based on entry signals.
 
@@ -70,7 +70,8 @@ class Position():
             Pandas DataFrame with added 'Position' (float) and 'Session' (int) columns.
             Returns original dataframe if entry_signal and exit_signals columns are not found.
         """
-        if _min < 0:
+        df = df.unstack()
+        if self._min < 0:
             raise ValueError("We can't take short positions, _min should be at least 0")
         
         if 'entry_signal' not in df.columns or 'exit_signal' not in df.columns:
@@ -94,24 +95,28 @@ class Position():
                     df.loc[df.index[i], ('position', coin)] = df.loc[df.index[i-1], ('position', coin)]
 
             df.loc[:, ('position', coin)] = df.loc[:, ('position', coin)].shift(1)
-            df.loc[:, ('position', coin)] = np.clip(df.loc[:, ('position', coin)], _min, _max)
+            df.loc[:, ('position', coin)] = np.clip(df.loc[:, ('position', coin)], self._min, self._max)
         
-        return df
+        self.df = df.stack(future_stack=True)
+        
+        return df.stack(future_stack=True)
     
-    def cumulated_position(self):
+    def initialize_position(self):
         """
-        
+        This will initialize the position column to 0
         """
         _df = self.df.unstack()
         for coin in _df.columns.get_level_values(1):
             _df[f'position', coin ] =  _df['entry_signal', coin].cumsum().shift(1).fillna(0)
-            
+
         _df = _df.stack(future_stack=True)
         #Perform some calculations
+        cal = Calculations()
         _df = cal.trades(_df)
         _df = cal.strategy_returns(_df)
         _df = cal.sessions(_df)
 
-        _df = self.calculate_position(_df, self._min, self._max)
+        self.df = _df
 
-        return _df.stack(future_stack=True)
+        return _df
+    

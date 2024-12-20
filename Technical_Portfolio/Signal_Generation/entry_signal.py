@@ -46,8 +46,8 @@ class Trend_Following():
         #Generate signals
         for coin in _df.columns.get_level_values(1):
             signal = (_df[f'SUPERTd_{length}_{float(multiplier)}', coin] == 1) & (_df[f'SUPERTd_{length}_{float(multiplier)}', coin].shift() == -1)
-            _df['entry_signals', coin] = signal.astype(int)
-            _df['entry_signals', coin] = _df['entry_signals', coin].shift().replace(np.nan, 0)
+            _df['entry_signal', coin] = signal.astype(int)
+            _df['entry_signal', coin] = _df['entry_signal', coin].shift().replace(np.nan, 0)
 
         # Stack the dataframe and get position and trades columns
         _df = _df.stack(future_stack=True)
@@ -107,6 +107,6 @@ class Mean_Reversion():
             (df['close', coin].shift(hourly_lookback) < df['shifted_daily_low', coin]) & (df['close', coin] > df['shifted_daily_low', coin]) &\
             (df['close', coin].shift(hourly_lookback + 1) > df['shifted_daily_low', coin]) #Ensures that price is pulling back to the daily low, and not going from below it to above it
 
-        df['entry_signals'] = df['last_days_low'].astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
+        df['entry_signal'] = df['last_days_low'].astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
 
         return df

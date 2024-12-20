@@ -116,8 +116,15 @@ class Calculations():
 
         return _df
     
-    def merge_cols(self, df, cols, use_clip = True):
-        common = 'exit_signal'
+    def merge_cols(self, df, common = 'exit_signal', use_clip = True):
+        """
+        Assume a stacked dataframe
+
+        parameters:
+            df: Stacked DataFrame
+            common: The common string that will be used to merge the columns
+            use_clip: A boolean that will clip the value between 0 and 1
+        """
         cols = [col for col in df.columns if common in col]
         df[common] = df[cols].sum(axis = 1)
         if use_clip:

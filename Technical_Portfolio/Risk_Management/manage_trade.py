@@ -64,23 +64,25 @@ class Manage_Trade():
         Uses the distance to the session stop loss to calculate the actual allocation.
         ERW stands for Equal Risk Weighting
         """
-        _df = self.df.copy().stack(future_stack = True)
+        _df = self.df.copy()
+        
         #distance to session stop loss, to apply it for all types of stop losses (normalized)
-        _df['distance_to_atr'] = (_df['close'] - _df['session_stop_loss']) / _df['close']
+        _df['distance_to_stop'] = (_df['close'] - _df['session_stop_loss']) / _df['close']
 
         #Calcualte the max dollar risk per trade
         max_dollar_risk_per_trade = max_percent_risk * max_dollar_allocation
 
 
-        _df['actual_allocation'] = max_dollar_risk_per_trade / _df['distance_to_atr']
+        _df['actual_allocation'] = max_dollar_risk_per_trade / _df['distance_to_stop']
         _df['actual_allocation'] = _df['actual_allocation'].clip(upper = max_dollar_allocation, lower = 0)
         #Since we are not gonna use any leverage, we can't allocate more than the max_dollar_allocation
         #we can't allocate less than 0
 
         _df = _df.unstack()
-        for coin in test.columns.get_level_values(1):
-            test = test.groupby(test['session', coin], group_keys=False).apply(lambda group: self.def_trade_size(group, coin))
+        for coin in _df.columns.get_level_values(1):
+            _df = _df.groupby(_df['session', coin], group_keys=False).apply(lambda group: self.def_trade_size(group, coin))
 
+        self.df = _df.stack(future_stack = True)
 
         return _df.stack(future_stack = True)
     
