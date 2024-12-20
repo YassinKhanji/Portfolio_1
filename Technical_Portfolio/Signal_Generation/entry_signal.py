@@ -41,14 +41,16 @@ class Trend_Following():
         supertrend_df = pd.concat(supertrend_results, axis=1)
         supertrend_df = supertrend_df.swaplevel(axis=1).sort_index(axis=1)
 
-        final_df = pd.concat([_df, supertrend_df], axis = 1)
+        _df = pd.concat([_df, supertrend_df], axis = 1)
+        
+        #Generate signals
+        for coin in _df.columns.get_level_values(1):
+            signal = (_df[f'SUPERTd_{length}_{float(multiplier)}', coin] == 1) & (_df[f'SUPERTd_{length}_{float(multiplier)}', coin].shift() == -1)
+            _df['entry_signals', coin] = signal.astype(int)
+            _df['entry_signals', coin] = _df['entry_signals', coin].shift().replace(np.nan, 0)
 
         # Stack the dataframe and get position and trades columns
-        _df = final_df.stack(future_stack=True)
-
-        #Generate signals
-        signal = (_df[f'SUPERTd_{length}_{float(multiplier)}'] == 1) & (_df[f'SUPERTd_{length}_{float(multiplier)}'].shift() == -1)
-        _df['entry_signals'] = pd.Series(np.where(signal, 1, 0)).shift(1)
+        _df = _df.stack(future_stack=True)
 
         return _df
     
