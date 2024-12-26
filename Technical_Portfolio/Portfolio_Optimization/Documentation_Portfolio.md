@@ -1,8 +1,8 @@
 # Portfolio Management
 
-The **portfolio management** module is responsible for the ongoing maintenance and optimization of the portfolio. It manages the rebalancing of asset allocations to achieve a specific target, such as maximizing returns, minimizing risk, or optimizing metrics like the Sharpe ratio. This module consists of two primary components: **Portfolio Management** and **Subportfolio Management**. It works closely with the testing or optimization module, which provides the methods necessary for optimization during execution. In live trading, these components should be called periodically to maintain and monitor the portfolio, subportfolios, and individual trading systems.
+The **portfolio management** module is responsible for the ongoing maintenance and optimization of the portfolio. It manages the rebalancing of asset allocations to achieve a specific target, such as maximizing returns, minimizing risk, or optimizing metrics like the Sharpe ratio. This module consists of two primary components: **Portfolio Optimization** and **portfolio Management**. It works closely with the testing or optimization module, which provides the methods necessary for optimization during execution. In live trading, these components should be called periodically to maintain and monitor the portfolio, portfolios, and individual trading systems.
 
-## Portfolio Management
+## Portfolio Optimization
 
 This component includes classes that handle various allocation strategies and rebalancing operations.
 
@@ -14,15 +14,17 @@ This component includes classes that handle various allocation strategies and re
 
 In other words, we could either optimize using expected variables or historical (trailing) variables. The objective function could be minimizing a variable, maximizing a varibale, and/or achievieng a value of a variable. To be precise the variables that we are refering to are metrics, whether it is sharpe-ratio, performance, Beta, Alpha, ...
 
-## Subportfolio Management
+## Portfolio Management
 
-This component oversees trade-level management, ensuring that parameters like the maximum and minimum allocations per trade, as well as the number of trades, are adhered to. It also plays a key role in strategy monitoring for risk management, identifying when a strategy no longer aligns with the portfolio’s goals or becomes too risky to continue. Additionally, it handles optimization tasks, adjusting allocations and other sensitive parameters (e.g., indicator values).
+This component oversees Strategy-level management, ensuring that parameters like the maximum and minimum allocations per trade, as well as the number of trades, are adhered to. It also plays a key role in strategy monitoring for risk management, identifying when a strategy no longer aligns with the portfolio’s goals or becomes too risky to continue. Additionally, it handles optimization tasks, adjusting allocations and other sensitive parameters (e.g., indicator values).
 
 Key metrics and factors considered include:
 
 - **Market Regime**: Allocations are adjusted depending on whether the market is trending, mean-reverting, or in a transitional phase.
 - **Asset Correlation**: Ensures diversification to minimize overconcentration in highly correlated assets or sectors, reducing risk.
 - **Sensitivity Analysis**: Adjusts allocations and expectations based on how sensitive certain parameters are to market changes.
+
+In summary, the portfolio managemenent module modifies the rebalanced by ensuring diversificiation, and matching strategies with their corresponding market conditions.
 
 ### Overconcentration Monitoring
 

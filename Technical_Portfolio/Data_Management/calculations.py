@@ -15,7 +15,18 @@ class Calculations():
 
         Parameters:
             df: Stacked DataFrame
-            freq: The frequency that the dataframe will be converted to
+            low_freq: The frequency that the dataframe will be converted to
+        """
+        pass
+
+    def upsample(self, df, high_freq='1H'):
+        """
+        This will be used to resample lower frequency data to higher frequency (e.g. daily to hourly data) after 
+        performing universe selection (much faster instead of redownloading the hourly data)
+
+        Parameters:
+            df: Stacked DataFrame
+            high_freq: The frequency that the dataframe will be converted to
         """
         pass
 
@@ -130,6 +141,28 @@ class Calculations():
         if use_clip:
             df[common] = df[common].clip(0, 1)    
         return df
+    
+    def update_all(self, df):
+        """
+        Takes both stacked and unstacked dataframes
+        This is a wrapper function that will update all the columns
+        """
+        stacked = True
+        _df = df.copy()
+        if isinstance(_df.columns, pd.MultiIndex):
+            stacked = True
+            _df = _df.stack(future_stack=True)
+
+        _df = self.trades(_df)
+        _df = self.strategy_returns(_df)
+        _df = self.strategy_creturns(_df)
+        _df = self.sessions(_df)
+
+        if not stacked:
+            _df = _df.unstack()
+        
+        return _df
+
     
 class Metrics():
 

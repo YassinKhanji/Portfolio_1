@@ -20,8 +20,8 @@ class Coarse_1():
 
         return universe
 
-    def volume_flag(self, df, trade_allocation = 1000000):
-        df['volume_flag'] =  np.where(df['volume_in_dollars'] * 0.05 > trade_allocation, 1, 0)
+    def volume_flag(self, df, max_dollar_allocation = 1000000):
+        df['volume_flag'] =  np.where(df['volume_in_dollars'] * 0.05 > max_dollar_allocation, 1, 0)
         return df
    
     def sort_by_volume(self, df):

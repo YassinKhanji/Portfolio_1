@@ -28,7 +28,7 @@ class Stop_Loss():
 
     def __init__(self, df: pd.DataFrame,
                  sl_type = 'atr', 
-                 indicator_length = 0.0, 
+                 sl_ind_length = 0.0, 
                  sl_mult = 0.0, 
                  sl_percentage = 0.0, 
                  sl_dollar = 0.0,
@@ -51,7 +51,7 @@ class Stop_Loss():
             ATR (for fixed SL)
         """
         self.df = df
-        self.indicator_length = indicator_length
+        self.sl_ind_length = sl_ind_length
         self.sl_mult = sl_mult
         self.sl_percentage = sl_percentage
         self.sl_dollar = sl_dollar
@@ -266,7 +266,7 @@ class Take_Profit():
                  df, 
                  tp_type = 'rr', 
                  tp_mult = 2.0, 
-                 indicator_length = 0,
+                 tp_ind_length = 0,
                  tp_percent = 0.02,
                  tp_dollar = 100,
                  exit_percent = 1,
@@ -290,7 +290,7 @@ class Take_Profit():
         self.df = df
         self.tp_type = tp_type
         self.tp_mult = tp_mult
-        self.indicator_length = indicator_length
+        self.tp_ind_length = tp_ind_length
         self.tp_percent = tp_percent
         self.tp_dollar = tp_dollar
         self.exit_percent = exit_percent
