@@ -19,7 +19,7 @@ def fetch_symbols(categories, processed_file='processed_categories.txt'):
 
                 if response.status_code == 200:
                     data = response.json()
-                    symbols = [coin['symbol'].upper() + 'USD' for coin in data]
+                    symbols = [coin['symbol'].upper() + 'USDT' for coin in data]
                     all_symbols.extend(symbols)
                     print(f"Fetching symbols for category '{category}' successful.")
                     
@@ -75,7 +75,7 @@ def upload_symbols(symbols, filename='symbols.txt'):
     # Construct the file path
     file_path = os.path.join(script_dir, filename)
     # Write to a .txt file, 5 elements per line
-    with open(file_path, "w") as file:
+    with open(file_path, "w", encoding = 'utf-8') as file:
         for i in range(0, len(symbols), 5):  # Iterate in steps of 5
             line = " ".join(symbols[i:i+5])  # Get a slice of 5 elements
             file.write(line + "\n")  # Write the line to the file with a newline character

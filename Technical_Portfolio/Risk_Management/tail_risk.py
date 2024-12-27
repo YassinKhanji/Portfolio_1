@@ -146,9 +146,9 @@ class Stop_Loss():
                 #Calculate the ATR indicator
                 for coin in _df.columns.levels[1]:
                     high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
-                    _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
+                    _df['atr', coin] = ta.atr(high, low, close, length=self.sl_ind_length)
 
-                _df = _df.iloc[self.indicator_length:] #Slice the dataframe to remove the NaN values from the ATR calculation
+                _df = _df.iloc[self.sl_ind_length:] #Slice the dataframe to remove the NaN values from the ATR calculation
                 #It is better to do the above as we might get NaN values in other columns, so this might remove many needed rows
                 #Note: This is done at this first stage right after we calculate all the indicators, We need to create a function in the 
                     #future to remove the largest length needed for the calculations as this would be essential to warm up the data needed.
@@ -207,13 +207,13 @@ class Stop_Loss():
             _df = _df.unstack()
             if not any('SUPERT'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the supertrend indicator
-                _df = Trend_Following().supertrend_signals(_df, self.indicator_length, self.sl_mult) #it contains supertrend values as well as signals
+                _df = Trend_Following().supertrend_signals(_df, self.sl_ind_length, self.sl_mult) #it contains supertrend values as well as signals
                 #Slice the data to remove the warm up period of the indicator
-                _df = _df.iloc[self.indicator_length:]
+                _df = _df.iloc[self.sl_ind_length:]
             
             #In all cases, rename the supertrend long column to be used as a stop loss
             for coin in _df.columns.levels[1]:
-                _df['stop_loss', coin] = _df[f'SUPERTl_{self.indicator_length}_{float(self.sl_mult)}', coin] 
+                _df['stop_loss', coin] = _df[f'SUPERTl_{self.sl_ind_length}_{float(self.sl_mult)}', coin] 
 
             _df = _df.stack(future_stack = True) 
 
@@ -377,10 +377,10 @@ class Take_Profit():
                 for coin in _df.columns.get_level_values(1):
                     #Calculate the atr indicator
                     high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
-                    _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
+                    _df['atr', coin] = ta.atr(high, low, close, length=self.tp_ind_length)
                 
                 #Remove Warm up
-                _df = _df.iloc[self.indicator_length:]
+                _df = _df.iloc[self.tp_ind_length:]
 
             _df = _df.stack(future_stack = True)
             _df['take_profit'] = _df['close'] + self.tp_mult * _df['atr']
@@ -414,10 +414,10 @@ class Take_Profit():
                 for coin in _df.columns.get_level_values(1):
                     #Calculate the atr indicator
                     high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
-                    _df['atr', coin] = ta.atr(high, low, close, length=self.indicator_length)
+                    _df['atr', coin] = ta.atr(high, low, close, length=self.tp_ind_length)
                 
                 #Remove Warm up
-                _df = _df.iloc[self.indicator_length:]
+                _df = _df.iloc[self.tp_ind_length:]
             
             _df = _df.stack(future_stack = True)
             _df['take_profit'] = _df['close'] + self.tp_mult * _df['atr']

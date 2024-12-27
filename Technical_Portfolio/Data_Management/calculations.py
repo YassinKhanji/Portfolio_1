@@ -19,16 +19,6 @@ class Calculations():
         """
         pass
 
-    def upsample(self, df, high_freq='1H'):
-        """
-        This will be used to resample lower frequency data to higher frequency (e.g. daily to hourly data) after 
-        performing universe selection (much faster instead of redownloading the hourly data)
-
-        Parameters:
-            df: Stacked DataFrame
-            high_freq: The frequency that the dataframe will be converted to
-        """
-        pass
 
     def trades(self, df):
         """
