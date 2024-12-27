@@ -13,6 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'S
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Risk_Management')))
 
 from data import Data
+from fetch_symbols import get_symbols
 from calculations import Calculations, Metrics
 from coarse import Coarse_1 as Coarse
 from fine import Fine_1 as Fine
@@ -26,8 +27,14 @@ class Sprtrnd_Breakout():
     def __init__(self, df):
         self.df = df.copy()
 
-    def update_universe(df: pd.DataFrame, max_positions: int = 4) -> pd.Series:
-        """Updates a DataFrame to track a dynamic universe of coins."""
+    def update_universe(df: pd.DataFrame, max_positions: int = 4, volume_rank_thr = 50) -> pd.Series:
+        """
+        Updates a DataFrame to track a dynamic universe of coins.
+
+        df : pd.DataFrame
+            A DataFrame with a MultiIndex of (time, coin) and a column 'position'.
+            Should already be downsampled to the desired frequency.
+        """
         current_universe = set()
         df['in_universe'] = False
 
@@ -54,8 +61,8 @@ class Sprtrnd_Breakout():
 
                 filter_condition = (
                     (temp_df['above_ema']) &
-                    (temp_df['volume_rank'] < 50) &
-                    (temp_df['std_rank'] < 10) &
+                    (temp_df['volume_rank'] < volume_rank_thr) &
+                    (temp_df['std_rank'] < max_positions) &
                     (temp_df['entry_signal'] == 1)
                 )
 
@@ -70,6 +77,8 @@ class Sprtrnd_Breakout():
 
             df.loc[(time_index, list(current_universe)), 'in_universe'] = True
         length = len(df.index.get_level_values(1).unique())
+
+        
         return df['in_universe'].shift(length), current_universe
 
 

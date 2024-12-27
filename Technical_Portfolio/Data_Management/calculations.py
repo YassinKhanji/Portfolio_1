@@ -8,7 +8,7 @@ class Calculations():
     def __init__(self):
         pass
 
-    def downsample(self, df, low_freq='1D'):
+    def downsample(self, df, low_freq='D'):
         """
         This will be used to resample higher frequency data to lower frequency (e.g. hourly to daily data)
         when performing universe selection (much faster instead of redownloading the daily data)
@@ -17,7 +17,19 @@ class Calculations():
             df: Stacked DataFrame
             low_freq: The frequency that the dataframe will be converted to
         """
-        pass
+        # Resample with specific aggregation for OHLCV
+        df_1 = df.copy()
+        df_daily = df_1.groupby(level = -1).resample(low_freq, level = 0).agg({
+            'open': 'first',    # First value of the day
+            'high': 'max',      # Maximum value of the day
+            'low': 'min',       # Minimum value of the day
+            'close': 'last',    # Last value of the day
+            'volume': 'sum'     # Total volume of the day
+        })
+        df_daily.columns = [f'daily_{col}' for col in df_daily.columns]
+        df_daily = df_daily.reorder_levels([1, 0], axis = 0).sort_index(axis = 0)
+
+        return df_daily
 
 
     def trades(self, df):

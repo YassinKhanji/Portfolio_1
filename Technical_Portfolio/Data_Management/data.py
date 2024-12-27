@@ -95,14 +95,7 @@ class Data:
     def upload_data(self, df, filename):
         df.to_csv(filename)
 
-    def symbols(self):
-        symbols = []
-        with open('symbols.txt', 'r') as file:
-            for line in file:  # Process line by line
-                words = line.split()  # Split the line into words
-                for word in words:
-                    symbols.append(word)
-        return symbols
+    
 
 
 

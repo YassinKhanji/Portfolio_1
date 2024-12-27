@@ -74,27 +74,53 @@ def upload_symbols(symbols, filename='symbols.txt'):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Construct the file path
     file_path = os.path.join(script_dir, filename)
-    # Write to a .txt file, 5 elements per line
-    with open(file_path, "w", encoding = 'utf-8') as file:
-        for i in range(0, len(symbols), 5):  # Iterate in steps of 5
-            line = " ".join(symbols[i:i+5])  # Get a slice of 5 elements
-            file.write(line + "\n")  # Write the line to the file with a newline character
+    
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        print("The file contains content.")
+    else:
+        # Write to a .txt file, 5 elements per line
+         with open(file_path, "w", encoding = 'utf-8') as file:
+            for i in range(0, len(symbols), 5):  # Iterate in steps of 5
+                line = " ".join(symbols[i:i+5])  # Get a slice of 5 elements
+                file.write(line + "\n")  # Write the line to the file with a newline character
+        
 
 
 # List of all categories
-all_categories = [
-    'layer-1', 'depin', 'proof-of-work-pow', 'proof-of-stake-pos', 'meme-token', 'dog-themed-coins', 
-    'eth-2-0-staking', 'non-fungible-tokens-nft', 'governance', 'artificial-intelligence', 
-    'infrastructure', 'layer-2', 'zero-knowledge-zk', 'storage', 'oracle', 'bitcoin-fork', 
-    'restaking', 'rollup', 'metaverse', 'privacy-coins', 'layer-0-l0', 'solana-meme-coins', 
-    'data-availability', 'internet-of-things-iot', 'frog-themed-coins', 'ai-agents', 
-    'superchain-ecosystem', 'bitcoin-layer-2', 'bridge-governance-tokens', 'modular-blockchain', 
-    'cat-themed-coins', 'cross-chain-communication', 'analytics', 'identity', 'wallets', 'masternodes'
+all_categories = ['layer-1'
+    # 'layer-1', 'depin', 'proof-of-work-pow', 'proof-of-stake-pos', 'meme-token', 'dog-themed-coins', 
+    # 'eth-2-0-staking', 'non-fungible-tokens-nft', 'governance', 'artificial-intelligence', 
+    # 'infrastructure', 'layer-2', 'zero-knowledge-zk', 'storage', 'oracle', 'bitcoin-fork', 
+    # 'restaking', 'rollup', 'metaverse', 'privacy-coins', 'layer-0-l0', 'solana-meme-coins', 
+    # 'data-availability', 'internet-of-things-iot', 'frog-themed-coins', 'ai-agents', 
+    # 'superchain-ecosystem', 'bitcoin-layer-2', 'bridge-governance-tokens', 'modular-blockchain', 
+    # 'cat-themed-coins', 'cross-chain-communication', 'analytics', 'identity', 'wallets', 'masternodes'
 ]
 
+
+# import chardet
+
+def get_symbols():
+    symbols = []
+     # Get the directory of the current script
+    current_dir = os.path.dirname(__file__)
+    
+    # Construct the full path to symbols.txt
+    file_path = os.path.join(current_dir, 'symbols.txt')
+    
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            for word in line.split():
+                symbols.append(word)
+    return symbols
+
+
+
 # Fetch symbols and send to server
-symbols = fetch_symbols(all_categories)
-upload_symbols(symbols)
+fetched_symbols = fetch_symbols(all_categories)
+symbols = get_symbols()
+print(symbols)
+upload_symbols(fetched_symbols)
 # send_to_server(symbols)
 
 
