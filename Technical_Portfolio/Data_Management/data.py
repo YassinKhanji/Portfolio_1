@@ -78,7 +78,7 @@ class Data:
         combined_df = combined_df.swaplevel(axis=1).sort_index(axis=1) # Swap the levels of the index and sort it
         combined_df = combined_df.apply(pd.to_numeric, errors='coerce') # Convert all columns to numeric
 
-        df = combined_df
+        self.df = combined_df
 
         return combined_df
     
@@ -133,7 +133,7 @@ class Data:
         # Convert data to a pandas DataFrame for easy manipulation
         df = pd.DataFrame(circulating_supply_data, columns=['timestamp', 'market_cap'])
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df['circulating_supply'] = df['market_cap'] / df['market_cap'].shift(1)  # approximate circulating supply from market cap
+        self.df['circulating_supply'] = df['market_cap'] / df['market_cap'].shift(1)  # approximate circulating supply from market cap
         
         return df
 
