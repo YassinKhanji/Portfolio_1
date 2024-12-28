@@ -1,154 +1,111 @@
 import numpy as np
-import datetime as dt
 import pandas as pd
 import requests
+from concurrent.futures import ThreadPoolExecutor
+import datetime as dt
+
 
 class Data:
-    """
-    This class is used to get historical data from Binance API and prepare it for analysis.
-    This means that each time we want to make certain analysis on the data, we can use this class to create a method to
-    prepare the data and then use it in the analysis. 
-    
-    Attributes:
-        symbols: list of strings
-        interval: string (e.g. '1d', '1h', '1m')
-        start_time: datetime object
-        end_time: datetime object
-
-        df: pandas DataFrame that contains the historical data for the given symbols, interval, start_time, and end_time
-        """
-    
     def __init__(self, symbols, interval, start_time, end_time):
-        self.df = None
-        self.get_binance_klines(symbols, interval, start_time, end_time)
-        self.prepare_data()
-        self.upload_data(self.df, 'data.csv')
+        self.symbols = symbols
+        self.interval = interval
+        self.start_time = start_time
+        self.end_time = end_time
+        self.available_symbols = self.binance_symbols()
 
-
-
-    def get_binance_klines(self, symbols, interval, start_time, end_time, limit=1000):
-        url = "https://api.binance.com/api/v3/klines"  # We added the endpoint to the URL so we can retrieve the klines data
-
-        # Get a list of the dates between the two given dates
-        date_list = pd.date_range(start=start_time, end=end_time, freq='D').tolist()
-
-        data_frames = {}  # Dictionary to store dataframes for each symbol
-
-        #### Get all symbols that exist on Binance
+    def binance_symbols(self):
+        """Fetch available symbols from Binance API."""
         response = requests.get("https://api.binance.com/api/v3/exchangeInfo")
         exchange_info = response.json()
         valid_symbols = {s['symbol'] for s in exchange_info['symbols']}
+        return [s for s in self.symbols if s in valid_symbols]
 
-        # Filter out invalid symbols
-        symbols = [s for s in symbols if s in valid_symbols]
+    def fetch_symbol_data(self, symbol, date_list, url, limit):
+        """Fetch kline data for a single symbol."""
+        all_data = []
+        for i in range(len(date_list) - 1):
+            params = {
+                'symbol': symbol,
+                'interval': self.interval,
+                'startTime': int(date_list[i].timestamp() * 1000),
+                'endTime': int((date_list[i + 1] - dt.timedelta(seconds=1)).timestamp() * 1000),
+                'limit': limit,
+            }
+            response = requests.get(url, params=params)
+            data = response.json()
+            if isinstance(data, list):
+                all_data.extend(data)
+        return symbol, all_data
 
+    def get_binance_klines(self, limit=1000):
+        """Fetch historical kline data for all symbols in parallel."""
+        url = "https://api.binance.com/api/v3/klines"
+        date_list = pd.date_range(start=self.start_time, end=self.end_time, freq='D').tolist()
 
-        for symbol in symbols:
-            all_df = pd.DataFrame()  # We will store all the dataframes in this dataframe
+        # Use ThreadPoolExecutor for parallel fetching
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = executor.map(
+                lambda symbol: self.fetch_symbol_data(symbol, date_list, url, limit),
+                self.available_symbols,
+            )
 
-            for i in range(len(date_list) - 1):
-                params = {
-                    'symbol': symbol,
-                    'interval': interval,
-                    'startTime': int(date_list[i].timestamp() * 1000),
-                    'endTime': int((date_list[i + 1] - dt.timedelta(seconds=1)).timestamp() * 1000),
-                    'limit': limit
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                if not data:
-                    continue
-                if type(data) == dict: #This is to ensure that we don't get an error
-                    # if the data is a dictionary (or a message that the coin does not trade in the requested time period)
-                    continue
-                df = pd.DataFrame(data)
-                all_df = pd.concat([all_df, df], ignore_index=True)
-
-            if not all_df.empty:
-                all_df = all_df.iloc[:, 0:6]
-                all_df.columns = ['Open Time', 'open', 'high', 'low', 'close', 'volume']
-                all_df.index = [dt.datetime.fromtimestamp(x / 1000.0) for x in all_df['Open Time']]
-                all_df.drop('Open Time', axis=1, inplace=True)
-                data_frames[symbol] = all_df
+        # Process and combine results
+        data_frames = {}
+        for symbol, data in results:
+            if not data:
+                continue
+            df = pd.DataFrame(data)
+            df = df.iloc[:, 0:6]
+            df.columns = ['Open Time', 'open', 'high', 'low', 'close', 'volume']
+            df.index = pd.to_datetime(df['Open Time'], unit='ms')
+            df.drop('Open Time', axis=1, inplace=True)
+            data_frames[symbol] = df
 
         if not data_frames:
             return None
 
-        combined_df = pd.concat(data_frames, axis=1) # Concatenate all DataFrames and create a hierarchical index
-        combined_df = combined_df.swaplevel(axis=1).sort_index(axis=1) # Swap the levels of the index and sort it
-        combined_df = combined_df.apply(pd.to_numeric, errors='coerce') # Convert all columns to numeric
-
-        self.df = combined_df
+        combined_df = pd.concat(data_frames, axis=1)
+        combined_df = combined_df.swaplevel(axis=1).sort_index(axis=1)
+        combined_df = combined_df.apply(pd.to_numeric, errors='coerce')
 
         return combined_df
-    
-    def prepare_data(self):
-        df = self.df.copy()
 
+    def prepare_data(self, df):
+        """Prepare data for analysis."""
+        df = df.copy()
         for coin in df.columns.levels[1]:
             df['returns', coin] = df['close', coin].pct_change()
-            df['log_return', coin] = np.log(1 + df['returns', coin])
+            df['log_return', coin] = np.log1p(df['returns', coin])
             df["creturns", coin] = df["log_return", coin].cumsum().apply(np.exp)
-            df['price', coin] = df['close', coin] #This will refer to the prices that the strategies will be running on
-                # Will eventually be modified when applying risk management
-                #Essential when applying exit signals, as stop losses and take profits (mainly) won't exit at the closing
-                # but would rather exit at the high or the low 
-                #Usually, we would upsample close data to the lowest frequency possible to get more accurate results
-                # Although in highly volatilite markets, this would provide wrong expectations. So it is more effecient to
-                # actually use the exact price we exited at
+            df['price', coin] = df['close', coin]
             df['volume_in_dollars', coin] = df['close', coin] * df['volume', coin]
 
-        # Sort the columns index
-        df = df.stack(level=1, future_stack= True) #Stacking the index columns
-        df = df.sort_index(axis=1) #Sorting by name
-        df.index.names = ['date', 'coin'] #Renaming the index columns
+        df = df.stack(level=1)
+        df.sort_index(axis=1, inplace=True)
+        df.index.names = ['date', 'coin']
+        df.dropna(inplace=True)
 
-        self.df = df
         return df
-    
+
     def upload_data(self, df, filename):
+        """Save data to a CSV file."""
         df.to_csv(filename)
 
-    def get_historical_supply(self, coin_id, start_date, end_date):
-        url = f'https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart/range'
-        
-        # Convert dates to Unix timestamps
-        start_timestamp = int(dt.strptime(start_date, "%Y-%m-%d").timestamp())
-        end_timestamp = int(dt.strptime(end_date, "%Y-%m-%d").timestamp())
-        
-        # Request parameters
-        params = {
-            'vs_currency': 'usd',
-            'from': start_timestamp,
-            'to': end_timestamp
-        }
-
-        # Fetch data from CoinGecko API
-        response = requests.get(url, params=params)
-        data = response.json()
-
-        # Extract the circulating supply data
-        circulating_supply_data = data['market_caps']  # market_caps contain timestamps, prices, and circulating supply
-        
-        # Convert data to a pandas DataFrame for easy manipulation
-        df = pd.DataFrame(circulating_supply_data, columns=['timestamp', 'market_cap'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        self.df['circulating_supply'] = df['market_cap'] / df['market_cap'].shift(1)  # approximate circulating supply from market cap
-        
+    def get_data(self):
+        """Main function to fetch, prepare, and save data."""
+        df = self.get_binance_klines()
+        if df is not None:
+            df = self.prepare_data(df)
+            self.upload_data(df, 'data.csv')
         return df
-
-    
-
-
-
-
 
 
 # Example usage
 symbols = ['BTCUSDT', 'ETHUSDT']
-interval = '1d'
-start_time = dt.datetime(2021, 1, 1)
-end_time = dt.datetime(2021, 1, 10)
+interval = '1h'
+start_time = dt.datetime(2020, 1, 1)
+end_time = dt.datetime(2020, 3, 1)
+
 data_instance = Data(symbols, interval, start_time, end_time)
-df= data_instance.df
+df = data_instance.get_data()
 print(df)
