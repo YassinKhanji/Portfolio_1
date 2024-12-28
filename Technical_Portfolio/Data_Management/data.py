@@ -26,7 +26,7 @@ class Data:
 
 
 
-    def get_binance_klines(symbols, interval, start_time, end_time, limit=1000):
+    def get_binance_klines(self, symbols, interval, start_time, end_time, limit=1000):
         url = "https://api.binance.com/api/v3/klines"  # We added the endpoint to the URL so we can retrieve the klines data
 
         # Get a list of the dates between the two given dates
