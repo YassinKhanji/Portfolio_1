@@ -24,13 +24,24 @@ class Data:
         self.prepare_data()
         self.upload_data(self.df, 'data.csv')
 
-    def get_binance_klines(self, symbols, interval, start_time, end_time, limit=1000):
+
+
+    def get_binance_klines(symbols, interval, start_time, end_time, limit=1000):
         url = "https://api.binance.com/api/v3/klines"  # We added the endpoint to the URL so we can retrieve the klines data
 
         # Get a list of the dates between the two given dates
         date_list = pd.date_range(start=start_time, end=end_time, freq='D').tolist()
 
         data_frames = {}  # Dictionary to store dataframes for each symbol
+
+        #### Get all symbols that exist on Binance
+        response = requests.get("https://api.binance.com/api/v3/exchangeInfo")
+        exchange_info = response.json()
+        valid_symbols = {s['symbol'] for s in exchange_info['symbols']}
+
+        # Filter out invalid symbols
+        symbols = [s for s in symbols if s in valid_symbols]
+
 
         for symbol in symbols:
             all_df = pd.DataFrame()  # We will store all the dataframes in this dataframe
@@ -46,6 +57,9 @@ class Data:
                 response = requests.get(url, params=params)
                 data = response.json()
                 if not data:
+                    continue
+                if type(data) == dict: #This is to ensure that we don't get an error
+                    # if the data is a dictionary (or a message that the coin does not trade in the requested time period)
                     continue
                 df = pd.DataFrame(data)
                 all_df = pd.concat([all_df, df], ignore_index=True)
@@ -64,7 +78,7 @@ class Data:
         combined_df = combined_df.swaplevel(axis=1).sort_index(axis=1) # Swap the levels of the index and sort it
         combined_df = combined_df.apply(pd.to_numeric, errors='coerce') # Convert all columns to numeric
 
-        self.df = combined_df
+        df = combined_df
 
         return combined_df
     
@@ -94,6 +108,34 @@ class Data:
     
     def upload_data(self, df, filename):
         df.to_csv(filename)
+
+    def get_historical_supply(self, coin_id, start_date, end_date):
+        url = f'https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart/range'
+        
+        # Convert dates to Unix timestamps
+        start_timestamp = int(dt.strptime(start_date, "%Y-%m-%d").timestamp())
+        end_timestamp = int(dt.strptime(end_date, "%Y-%m-%d").timestamp())
+        
+        # Request parameters
+        params = {
+            'vs_currency': 'usd',
+            'from': start_timestamp,
+            'to': end_timestamp
+        }
+
+        # Fetch data from CoinGecko API
+        response = requests.get(url, params=params)
+        data = response.json()
+
+        # Extract the circulating supply data
+        circulating_supply_data = data['market_caps']  # market_caps contain timestamps, prices, and circulating supply
+        
+        # Convert data to a pandas DataFrame for easy manipulation
+        df = pd.DataFrame(circulating_supply_data, columns=['timestamp', 'market_cap'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df['circulating_supply'] = df['market_cap'] / df['market_cap'].shift(1)  # approximate circulating supply from market cap
+        
+        return df
 
     
 

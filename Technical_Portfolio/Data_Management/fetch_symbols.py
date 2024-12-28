@@ -87,14 +87,14 @@ def upload_symbols(symbols, filename='symbols.txt'):
 
 
 # List of all categories
-all_categories = ['layer-1'
-    # 'layer-1', 'depin', 'proof-of-work-pow', 'proof-of-stake-pos', 'meme-token', 'dog-themed-coins', 
-    # 'eth-2-0-staking', 'non-fungible-tokens-nft', 'governance', 'artificial-intelligence', 
-    # 'infrastructure', 'layer-2', 'zero-knowledge-zk', 'storage', 'oracle', 'bitcoin-fork', 
-    # 'restaking', 'rollup', 'metaverse', 'privacy-coins', 'layer-0-l0', 'solana-meme-coins', 
-    # 'data-availability', 'internet-of-things-iot', 'frog-themed-coins', 'ai-agents', 
-    # 'superchain-ecosystem', 'bitcoin-layer-2', 'bridge-governance-tokens', 'modular-blockchain', 
-    # 'cat-themed-coins', 'cross-chain-communication', 'analytics', 'identity', 'wallets', 'masternodes'
+all_categories = [
+    'layer-1', 'depin', 'proof-of-work-pow', 'proof-of-stake-pos', 'meme-token', 'dog-themed-coins', 
+    'eth-2-0-staking', 'non-fungible-tokens-nft', 'governance', 'artificial-intelligence', 
+    'infrastructure', 'layer-2', 'zero-knowledge-zk', 'storage', 'oracle', 'bitcoin-fork', 
+    'restaking', 'rollup', 'metaverse', 'privacy-coins', 'layer-0-l0', 'solana-meme-coins', 
+    'data-availability', 'internet-of-things-iot', 'frog-themed-coins', 'ai-agents', 
+    'superchain-ecosystem', 'bitcoin-layer-2', 'bridge-governance-tokens', 'modular-blockchain', 
+    'cat-themed-coins', 'cross-chain-communication', 'analytics', 'identity', 'wallets', 'masternodes'
 ]
 
 
