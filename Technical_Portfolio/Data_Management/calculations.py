@@ -10,6 +10,24 @@ class Calculations():
     def __init__(self):
         pass
 
+    def column_concater(self, dfs: list, column_name: str) -> pd.DataFrame:
+        """
+        Concatenates columns of multiple dataframes into one dataframe.
+
+        Accepts stacked or unstacked dataframes.
+
+        Parameters:
+            dfs: List of DataFrames to concatenate
+            column_name: Name of the column to concatenate
+        """
+        columns  = []
+        for df in dfs:
+            columns.append(df[column_name])
+
+        new_df = pd.concat(columns, axis = 1)
+        return new_df
+
+
     def downsample(self, df, low_freq='D'):
         """
         This will be used to resample higher frequency data to lower frequency (e.g. hourly to daily data)

@@ -27,13 +27,11 @@ class Sprtrnd_Breakout():
     def __init__(self, df):
         self.df = df.copy()
 
-    def update_universe(df: pd.DataFrame, max_positions: int = 4, volume_rank_thr = 50) -> pd.Series:
+    def update_universe(self, df: pd.DataFrame, max_positions: int = 4) -> pd.Series:
         """
         Updates a DataFrame to track a dynamic universe of coins.
-
-        df : pd.DataFrame
-            A DataFrame with a MultiIndex of (time, coin) and a column 'position'.
-            Should already be downsampled to the desired frequency.
+        Should include the dataframe with the lower frequency data. (daily, weekly, etc.)
+        Assumes a stacked dataframe
         """
         current_universe = set()
         df['in_universe'] = False
@@ -61,8 +59,8 @@ class Sprtrnd_Breakout():
 
                 filter_condition = (
                     (temp_df['above_ema']) &
-                    (temp_df['volume_rank'] < volume_rank_thr) &
-                    (temp_df['std_rank'] < max_positions) &
+                    (temp_df['volume_rank'] < 50) &
+                    (temp_df['std_rank'] < 10) &
                     (temp_df['entry_signal'] == 1)
                 )
 
@@ -76,12 +74,13 @@ class Sprtrnd_Breakout():
                     current_universe.update(to_be_added)
 
             df.loc[(time_index, list(current_universe)), 'in_universe'] = True
-        length = len(df.index.get_level_values(1).unique())
-
         
-        return df['in_universe'].shift(length), current_universe
+        df = df.unstack()
+        df['in_universe'] = df['in_universe'].shift(periods = 1, freq = '1d')
+        self.df = df = df.stack(future_stack = True)
+        return df['in_universe'], current_universe
 
-
+    def strategy(self, df: pd.DataFrame)
     def objective_function(self, df):
         pass
 
