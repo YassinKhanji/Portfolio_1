@@ -24,7 +24,8 @@ class Calculations():
             'high': 'max',      # Maximum value of the day
             'low': 'min',       # Minimum value of the day
             'close': 'last',    # Last value of the day
-            'volume': 'sum'     # Total volume of the day
+            'volume': 'sum',     # Total volume of the day
+            'volume_in_dollars': 'sum' # Total volume in dollars of the day
         })
         htf_df.columns = [f'htf_{col}' for col in htf_df.columns]
         htf_df = htf_df.reorder_levels([1, 0], axis = 0).sort_index(axis = 0)
