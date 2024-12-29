@@ -9,12 +9,13 @@ from fetch_symbols import get_symbols
 
 
 class Data:
-    def _init_(self, symbols, interval, start_time, end_time):
+    def __init__(self, symbols, interval, start_time, end_time):
         self.symbols = symbols
         self.interval = interval
         self.start_time = start_time
         self.end_time = end_time
         self.available_symbols = self.binance_symbols()
+        self.df = self.get_data()
 
     def binance_symbols(self):
         """Fetch available symbols from Binance API."""
@@ -102,8 +103,8 @@ class Data:
             self.upload_data(df, 'data.csv')
         return df
     
-from fetch_symbols import get_symbols
-import numpy as np
+
+
 
 class CSV_Data:
     def __init__(self, folder_path, symbols):
@@ -192,9 +193,9 @@ class CSV_Data:
 # print(df)
 
 
-
-symbols = get_symbols()
-binance_symbols = Data(symbols)
-folder_path = r'C:\Users\yassi\OneDrive\Documents\Trading\Algo Trading Projects\Algo Business\data\Binance Data (CSV)'
-df = CSV_Data(folder_path, symbols).df
+#Use the below for uploading full data (uploaded to csv)
+# symbols = get_symbols()
+# binance_symbols = Data(symbols)
+# folder_path = r'C:\Users\yassi\OneDrive\Documents\Trading\Algo Trading Projects\Algo Business\data\Binance Data (CSV)'
+# df = CSV_Data(folder_path, symbols).df
 
