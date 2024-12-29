@@ -3,6 +3,8 @@ import datetime as dt
 import pandas as pd
 import quantstats_lumi as qs
 import math
+import vectorbt as vbt
+import yfinance as yf
 
 class Calculations():
     def __init__(self):
@@ -243,6 +245,26 @@ class Metrics():
         print("Kelly Criterion:             {}".format(kelly_criterion))
         
         print(100 * "=")
+
+    def get_rf(self):
+        """
+        This function should be used to get the risk-free rate
+        """
+        # Fetch 10-year Treasury yield (^TNX)
+        rf_data = yf.download('^TNX', start='2020-01-01', end='2024-12-31', progress=False)
+        rf_rate = rf_data['Close'] / 100  # Convert percentage to decimal
+        return rf_rate.iloc[-1]
+
+    def get_benchmark_annual_return(self):
+        """
+        This function should be used to get the benchmark return
+        """
+        # Download historical data (e.g., S&P 500)
+        benchmark_data = vbt.YFData.download('^GSPC', start='2000-01-01', end='2023-12-31')
+        prices = benchmark_data.get('Close')
+        returns = prices.pct_change().dropna()
+        return qs.stats.cagr(returns)
+
 
     def calculate_multiple(self, bh = False):
         """
@@ -504,5 +526,19 @@ class Metrics():
         for coin in self.df['strategy'].columns:
             total_trades = math.ceil(self.df['session', coin].iloc[-1] / 2)
             results[coin] = self.calculate_percentage_expectancy()[coin] * (total_trades / 12)
+
+        return results
+    
+    def calculate_omega_ratio(self):
+        """
+        The Omega Ratio is a risk-return performance measure of an investment asset, portfolio, or strategy.
+
+        Typically >1 is considered good.
+        """
+        results = {}
+        rf = self.get_rf()
+
+        for coin in self.df['strategy'].columns:
+            results[coin] = qs.stats.omega(self.df['strategy', coin].apply(np.exp) - 1, rf)
 
         return results
