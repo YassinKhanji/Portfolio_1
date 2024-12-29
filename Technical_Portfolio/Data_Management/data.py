@@ -185,12 +185,12 @@ class CSV_Data:
 
 
 # Example usage
-symbols = ['BTCUSDT', 'ETHUSDT']
-interval = '1h'
-start_time = dt.datetime(2020, 1, 1)
-end_time = dt.datetime(2020, 3, 1)
-df = Data(symbols, interval, start_time, end_time).df
-print(df)
+# symbols = ['BTCUSDT', 'ETHUSDT']
+# interval = '1h'
+# start_time = dt.datetime(2020, 1, 1)
+# end_time = dt.datetime(2020, 3, 1)
+# df = Data(symbols, interval, start_time, end_time).df
+# print(df)
 
 
 #Use the below for uploading full data (uploaded to csv)

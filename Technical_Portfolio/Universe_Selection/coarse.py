@@ -21,7 +21,7 @@ class Coarse_1():
         return universe
 
     def volume_flag(self, df, max_dollar_allocation = 1000000):
-        df['volume_flag'] =  np.where(df['volume_in_dollars'] * 0.05 > max_dollar_allocation, 1, 0)
+        df['volume_flag'] =  np.where(df['htf_volume_in_dollars'] * 0.05 > max_dollar_allocation, 1, 0)
         return df
    
     def sort_by_volume(self, df):
@@ -45,7 +45,7 @@ class Coarse_1():
         # # Drop unused labels from the MultiIndex
         # df.index = df.index.remove_unused_levels()
 
-        df['volume_rank'] = df['volume'].groupby(df.index.get_level_values(0)).rank(ascending = False)
+        df['volume_rank'] = df['htf_volume'].groupby(df.index.get_level_values(0)).rank(ascending = False)
 
         return df
     
@@ -70,7 +70,7 @@ class Coarse_1():
 
         #Calculate the standard deviation
         for coin in df_unstacked.columns.get_level_values(1).unique():
-            df_unstacked['std_values', coin] = df_unstacked['close', coin].rolling(window=std_window).std() / df_unstacked['close', coin].rolling(window = mean_window).mean()
+            df_unstacked['htf_std_values', coin] = df_unstacked['htf_close', coin].rolling(window=std_window).std() / df_unstacked['htf_close', coin].rolling(window = mean_window).mean()
 
         #Re-stack the df
         df = df_unstacked.stack(future_stack=True)
@@ -94,7 +94,7 @@ class Coarse_1():
         # #################### CALL THE BELOW EVERYTIME YOU WANT TO FILTER ####################
         # df.index = df.index.remove_unused_levels()
 
-        df['std_rank'] = df['std_values'].groupby(df.index.get_level_values(0)).rank(ascending = False)
+        df['std_rank'] = df['htf_std_values'].groupby(df.index.get_level_values(0)).rank(ascending = False)
 
         """
         The following part is made to preserve the indicator data for all coins (filtered and non-filtered).

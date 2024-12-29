@@ -19,17 +19,20 @@ class Calculations():
         """
         # Resample with specific aggregation for OHLCV
         df_1 = df.copy()
-        df_daily = df_1.groupby(level = -1).resample(low_freq, level = 0).agg({
+        htf_df = df_1.groupby(level = -1).resample(low_freq, level = 0).agg({
             'open': 'first',    # First value of the day
             'high': 'max',      # Maximum value of the day
             'low': 'min',       # Minimum value of the day
             'close': 'last',    # Last value of the day
             'volume': 'sum'     # Total volume of the day
         })
-        df_daily.columns = [f'daily_{col}' for col in df_daily.columns]
-        df_daily = df_daily.reorder_levels([1, 0], axis = 0).sort_index(axis = 0)
+        htf_df.columns = [f'htf_{col}' for col in htf_df.columns]
+        htf_df = htf_df.reorder_levels([1, 0], axis = 0).sort_index(axis = 0)
 
-        return df_daily
+        df = df_1.join(htf_df, how = 'outer')
+        df = df.unstack().ffill().stack()
+
+        return df
 
 
     def trades(self, df):
