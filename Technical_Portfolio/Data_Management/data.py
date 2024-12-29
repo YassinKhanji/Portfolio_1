@@ -3,10 +3,13 @@ import pandas as pd
 import requests
 from concurrent.futures import ThreadPoolExecutor
 import datetime as dt
+import os
+from functools import reduce
+from fetch_symbols import get_symbols
 
 
 class Data:
-    def __init__(self, symbols, interval, start_time, end_time):
+    def _init_(self, symbols, interval, start_time, end_time):
         self.symbols = symbols
         self.interval = interval
         self.start_time = start_time
@@ -98,14 +101,100 @@ class Data:
             df = self.prepare_data(df)
             self.upload_data(df, 'data.csv')
         return df
+    
+from fetch_symbols import get_symbols
+import numpy as np
+
+class CSV_Data:
+    def __init__(self, folder_path, symbols):
+        self.folder_path = folder_path
+        self.symbols = symbols
+        self.df = self.process_folder(folder_path, symbols)
+        self.df = self.prepare_data()
+        self.upload_data_to_csv(self.df)
+        
+    
+    def prepare_data(self):
+        df = self.df.copy()
+        for coin in df.columns.levels[1]:
+            df['returns', coin] = df['close', coin].pct_change()
+            df['log_return', coin] = np.log(df['returns', coin])
+            df["creturns", coin] = df["log_return", coin].cumsum().apply(np.exp)
+            df['price', coin] = df['close', coin]
+            df['volume_in_dollars', coin] = df['close', coin] * df['volume', coin]
+
+        df = df.stack(level=1, future_stack=True)
+        df.sort_index(axis=1, inplace=True)
+        df.index.names = ['date', 'coin']
+        df.dropna(inplace=True)
+
+        return df
+    
+    def get_data(self, file_path, symbols):
+        df = pd.read_csv(file_path)
+        df = df.drop(columns = df.columns[-1]).reset_index()
+        df.drop(columns = df.columns[0], inplace = True)
+        df.drop(index = 0, inplace = True)
+        df.columns = ['date', 'coin', 'open', 'high', 'low', 'close', 'volume', 'volume_in_dollars']
+
+        if not df['coin'].iloc[0] in symbols:
+            return
+        # Clean the date column by stripping whitespace
+        df['date'] = df['date'].str.strip()
+        # Parse the date column with mixed format
+        df['date'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
+        
+        df.set_index([df.columns[0], df.columns[1]], inplace = True)
+        df = df.unstack()
+        return df
+    
+    def process_folder(self, folder_path, symbols):
+        # Get all CSV files in the folder
+        csv_files = [f for f in os.listdir(folder_path) if f.endswith('.csv')]
+        
+        dfs = []
+        
+        for file in csv_files:
+            file_path = os.path.join(folder_path, file)
+            df = self.get_data(file_path, symbols)
+            if df is not None:
+                dfs.append(df)
+        
+
+        # Get the union of all indices (dates) to align the data
+        all_dates = reduce(pd.Index.union, [df.index.get_level_values(0) for df in dfs])
+
+        # Reindex all DataFrames to the same set of dates (adding NaNs where data is missing)
+        dfs_aligned = [df.reindex(all_dates, level=0, fill_value=None) for df in dfs]
+
+        # Concatenate all DataFrames
+        concatenated_df = pd.concat(dfs_aligned, axis=1)
+        concatenated_df = concatenated_df.sort_index(axis=1)
+        concatenated_df = concatenated_df.apply(pd.to_numeric, errors='coerce', downcast='float') #Essential to perform calculations
+        
+        return concatenated_df
+
+    def upload_data_to_csv(self, df):
+        # Upload the data to CSV file
+        df.to_csv('all_data.csv')
+    
+
+    
+
 
 
 # Example usage
-symbols = ['BTCUSDT', 'ETHUSDT']
-interval = '1h'
-start_time = dt.datetime(2020, 1, 1)
-end_time = dt.datetime(2020, 3, 1)
+# symbols = ['BTCUSDT', 'ETHUSDT']
+# interval = '1h'
+# start_time = dt.datetime(2020, 1, 1)
+# end_time = dt.datetime(2020, 3, 1)
+# df = Data(symbols, interval, start_time, end_time).df
+# print(df)
 
-data_instance = Data(symbols, interval, start_time, end_time)
-df = data_instance.get_data()
-print(df)
+
+
+symbols = get_symbols()
+binance_symbols = Data(symbols)
+folder_path = r'C:\Users\yassi\OneDrive\Documents\Trading\Algo Trading Projects\Algo Business\data\Binance Data (CSV)'
+df = CSV_Data(folder_path, symbols).df
+
