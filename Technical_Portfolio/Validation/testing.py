@@ -4,11 +4,23 @@ from sklearn.model_selection import ParameterGrid
 from skopt import gp_minimize
 from skopt.space import Integer, Categorical, Real
 from skopt.utils import use_named_args
+import yfinance as yf
 
 
 
 class WFO():
-    def __init__(self, data, trading_strategy, param_grid, train_size, test_size, step_size, optimize_fn):
+    def __init__(self, data, trading_strategy, param_grid, train_size, test_size, step_size, optimize_fn="grid"):
+        """
+        This class performs a walk-forward optimization on a trading strategy.
+
+        Parameters:
+        data (pd.DataFrame): The historical data to be used for backtesting.
+        trading_strategy (object): The trading strategy to be optimized.
+        param_grid (dict): The grid of parameters to be optimized.
+        train_size (int): The number of data points to be used for training.
+        test_size (int): The number of data points to be used for testing.
+        step_size (int): The number of data points to step forward in each iteration.
+        """
         self.data = data
         self.trading_strategy = trading_strategy
         self.param_grid = param_grid
@@ -16,6 +28,20 @@ class WFO():
         self.test_size = test_size
         self.step_size = step_size
         self.optimize_fn = optimize_fn
+
+        max_param = max(
+        param.high if isinstance(param, (Integer, Real)) else max(param) #To handle all different cases
+        for param in param_grid.values()
+        )
+        
+        if step_size + train_size + test_size > len(data):
+            raise ValueError("Invalid train, test, or step size.")
+        if (train_size > max_param or test_size > max_param):
+            raise ValueError("Parameter range exceeds train size or Test size.")
+        if optimize_fn not in ["grid", "gp"]:
+            raise ValueError("Invalid optimization function")
+        
+                             
 
     #### Helper Methods ####
     def dict_to_param_space(self, param_dict):
@@ -40,6 +66,7 @@ class WFO():
             else:
                 raise ValueError(f"Invalid range for parameter '{param_name}': {param_range}")
         return param_space
+    
 
     def split_data(self, data, train_size, test_size, step_size):
         start = 0
@@ -51,18 +78,15 @@ class WFO():
 
 
     #### Optimization Methods ####
-    def optimize_parameters(self, train_data, param_grid):
+    def optimize_parameters_grid(self, train_data, param_grid):
         best_params = None
         best_performance = -np.inf
         for params in ParameterGrid(param_grid):
             result = self.trading_strategy(train_data.copy(), **params)
             performance = result['creturns'].iloc[-1]  # Get the last value of cumulative returns
-            print(performance, best_performance, params)
             if performance > best_performance:
                 best_performance = performance
                 best_params = params
-            
-        print(f'In sample best performance: {best_performance}')
         return best_params
 
     def optimize_parameters_gp(self, train_data, param_space):
@@ -89,9 +113,7 @@ class WFO():
         best_params = {dim.name: val for dim, val in zip(param_space, result.x)}
         return best_params
 
-    # Example Usage
-    # Load data
-    # 5. Test optimized parameters on out-of-sample data
+   
     def test_strategy(self, test_data, best_params):
         result = self.trading_strategy(test_data.copy(), **best_params)
         if "creturns" in result.columns:
@@ -99,29 +121,18 @@ class WFO():
         else:
             return np.nan
 
-    # 6. Walk-forward optimization loop
-    def walk_forward_optimization(self, data, train_size, test_size, step_size, param_grid, optimize_fn):
+
+    def walk_forward_optimization(self):
         """
         Perform a walk-forward optimization on a dataset.
-
-        Parameters:
-        ----------
-        data : pd.DataFrame
-            The dataset to optimize on.
-        train_size : int
-            The size of the training set.
-        test_size : int
-            The size of the testing set.
-        step_size : int
         """
         results = []
-        for train, test in self.split_data(data, train_size, test_size, step_size):
-            print(f"Training on data from {train.index[0]} to {train.index[-1]}")
-            print(f"Testing on data from {test.index[0]} to {test.index[-1]}")
-            
+        for train, test in self.split_data(self.data, self.train_size, self.test_size, self.step_size):
             # Optimize on training data
-            best_params = optimize_fn(train, param_grid)
-            print(f"Best params: {best_params}")
+            if self.optimize_fn == "grid":
+                best_params = self.optimize_parameters_grid(train, self.param_grid)
+            elif self.optimize_fn == "gp":
+                best_params = self.optimize_parameters_gp(train, self.param_grid)
             
             # Test on out-of-sample data
             performance = self.test_strategy(test, best_params)
