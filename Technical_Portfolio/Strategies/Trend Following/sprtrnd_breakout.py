@@ -7,10 +7,11 @@ import os
 
 
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Universe_Selection')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Signal_Generation')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Risk_Management')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..','Data_Management')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..','Universe_Selection')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..','Signal_Generation')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..','Risk_Management')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'Validation')))
 
 from data import Data
 from fetch_symbols import get_symbols
@@ -21,6 +22,7 @@ from entry_signal import Trend_Following, Mean_Reversion
 from tail_risk import Stop_Loss, Take_Profit
 from position_size import Position
 from manage_trade import Manage_Trade
+from testing import WFO
 
 
 class Sprtrnd_Breakout():
@@ -80,9 +82,9 @@ class Sprtrnd_Breakout():
         self.df = df = df.stack(future_stack = True)
         return df['in_universe'], current_universe
 
-    def strategy(self, df: pd.DataFrame)
-    def objective_function(self, df):
+    def strategy(self, df: pd.DataFrame):
         pass
-
-    def optimize(self):
+    
+    def test(self):
         pass
+        
