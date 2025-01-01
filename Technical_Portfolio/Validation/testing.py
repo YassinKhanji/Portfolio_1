@@ -3,9 +3,9 @@ import pandas as pd
 from sklearn.model_selection import ParameterGrid
 from skopt import gp_minimize
 from skopt.space import Integer, Categorical, Real
-from skopt.utils import use_named_args
-import yfinance as yf
 import quantstats_lumi as qs
+from collections.abc import Iterable
+
 
 
 
@@ -39,6 +39,8 @@ class WFO():
         self.step_size = step_size
         self.optimize_fn = optimize_fn
         self.objective = objective
+        
+        minimum_train_size = self.min_train_test_size(train_size)
 
         max_param = max(
         param.high if isinstance(param, (Integer, Real)) else max(param) #To handle all different cases
@@ -47,36 +49,85 @@ class WFO():
 
         if step_size + train_size + test_size > len(data):
             raise ValueError("Invalid train, test, or step size.")
-        if (train_size > max_param or test_size > max_param):
+        elif (train_size < max_param or test_size < max_param):
             raise ValueError("Parameter range exceeds train size or Test size.")
+        elif train_size < 1 or test_size < 1 or step_size < 1:
+            raise ValueError("Train, test, and step size must be greater than 0.")
+        elif test_size < train_size:
+            raise ValueError("Test size must be greater or equal to train size.")
+        elif minimum_train_size > train_size:
+            train_size = minimum_train_size
+            print(f"Adjusted train size to {train_size}")
+    
         if optimize_fn not in ["grid", "gp"]:
             raise ValueError("Invalid optimization function")
         
                              
 
     #### Helper Methods ####
+    def min_train_test_size(self, train_size):
+        """
+        Calculate the minimum test size based on the train size.
+        """
+
+        current_size = train_size
+        result = []
+
+        while len(result) == 0 or result is None:
+            result = self.trading_strategy(self.data.iloc[:current_size])
+            if len(result) != 0:
+                break
+            current_size *= 2
+            
+
+        return current_size - len(result)
+
+
+        
     def dict_to_param_space(self, param_dict):
+        """
+        Converts a dictionary of parameters to a list of skopt parameters.
+        """
         param_space = []
         for param_name, param_range in param_dict.items():
-            if isinstance(param_range, tuple) and len(param_range) == 2:
-                if isinstance(param_range[0], int) and isinstance(param_range[1], int):
-                    # Create an Integer parameter range
-                    param_space.append(Integer(param_range[0], param_range[1], name=param_name))
-
-                elif isinstance(param_range[0], float) and isinstance(param_range[1], float):
-                    # Create a Real parameter range for floats
-                    param_space.append(Real(param_range[0], param_range[1], name=param_name))
-
-                elif isinstance(param_range[0], Categorical) and isinstance(param_range[1], Categorical):
-                    # Create a Categorical parameter range
-                    param_space.append(Categorical(param_range, name=param_name))
-
+            if isinstance(param_range, Integer):
+                param_space.append(Integer(param_range.low, param_range.high, name=param_name))
+            elif isinstance(param_range, Real):
+                param_space.append(Real(param_range.low, param_range.high, name=param_name))
+            elif isinstance(param_range, Categorical):
+                param_space.append(Categorical(param_range.categories, name=param_name))
             elif isinstance(param_range, range):
-                # Convert range to min and max bounds
                 param_space.append(Integer(min(param_range), max(param_range), name=param_name))
             else:
                 raise ValueError(f"Invalid range for parameter '{param_name}': {param_range}")
         return param_space
+        
+
+    def convert_param_space(self, param_space, n_samples=10):
+        """
+        Converts a parameter dictionary with Integer and Real objects to an iterable format.
+
+        Parameters:
+            param_space (dict): Dictionary with Integer or Real objects as values.
+            n_samples (int): Number of discrete samples to generate for Real values.
+        
+        Returns:
+            dict: Parameter dictionary with iterable values.
+        """
+        converted = {}
+        for key, value in param_space.items():
+            if isinstance(value, Integer):
+                # Generate a range of discrete integers
+                converted[key] = list(range(value.low, value.high + 1))
+            elif isinstance(value, Real):
+                # Generate n_samples equally spaced values in the range
+                converted[key] = list(np.linspace(value.low, value.high, n_samples))
+            else:
+                # Assume the parameter is already iterable
+                converted[key] = value
+
+        return converted
+
     
 
     def split_data(self, data, train_size, test_size, step_size):
@@ -88,7 +139,18 @@ class WFO():
             start += step_size
 
     def objective_function(self, result):
-        strategy = result['strategy'].apply(np.exp - 1)
+        """
+        Calculate the objective function for the optimization.
+
+        Note that we have only included objective functions that we want to maximize.
+        """
+        if 'strategy' not in result.columns:
+            raise ValueError("The result DataFrame must have a 'strategy' column.")
+
+        strategy = result['strategy'].apply(np.exp) - 1
+
+        if strategy.sum() == 0:
+            return 0
 
         if self.objective == "multiple":
             creturns = result['strategy'].cumsum().apply(np.exp)
@@ -97,22 +159,36 @@ class WFO():
             performance = qs.stats.sharpe(strategy)
         elif self.objective == "sortino":
             performance = qs.stats.sortino(strategy)
-        elif self.objective== "calmar": 
+        elif self.objective == "calmar": 
             performance = qs.stats.calmar(strategy)
         else:
             raise ValueError("Invalid objective function")
 
-        return -performance
+        return performance
+    
 
 
 
     #### Optimization Methods ####
-    def optimize_parameters_grid(self, train_data, param_grid):
+    def optimize_parameters_grid(self, train_data, param_space):
+        #Check if the parameter space is iterable (for ParameterGrid compatibility)
+        if not any([isinstance(param_range, Iterable) for param_range in param_space.values()]):
+            param_grid = self.convert_param_space(param_space, n_samples=20)
+        else:
+            param_grid = param_space
+        
+        print([param_space])
         best_params = None
         best_objective = -np.inf
         for params in ParameterGrid(param_grid):
-            result = self.trading_strategy(train_data.copy(), **params)
-            objective = self.objective_function(result)  # Get the last value of cumulative returns
+            print(params)
+            # print(train_data)
+            result = self.trading_strategy(train_data.copy(), params = params)
+            if result is None or len(result) == 0:
+                continue
+            # print(result)
+            objective = self.objective_function(result)
+            print(objective)
             if objective > best_objective:
                 best_objective = objective
                 best_params = params
@@ -123,23 +199,24 @@ class WFO():
         if isinstance(param_space, dict):
             param_space = self.dict_to_param_space(param_space)
 
-        @use_named_args(param_space)
-        def objective(**params):
-            result = self.trading_strategy(train_data.copy(), **params)
+        def objective(param_space):
+            result = self.trading_strategy(train_data.copy(), params = param_space)
             # Use negative performance because gp_minimize minimizes
             objective = self.objective_function(result) 
-            return -objective if not pd.isnull(objective) else np.inf  # Handle invalid values
+            print(objective)
+            return -objective if not pd.isnull(objective) else 1e10  # Handle invalid values
 
         # Run gp_minimize
         result = gp_minimize(
             func=objective,
             dimensions=param_space,
-            n_calls=50,  # Number of evaluations
+            n_calls=10,  # Number of evaluations
             random_state=42,
         )
         
         # Extract the best parameters
         best_params = {dim.name: val for dim, val in zip(param_space, result.x)}
+        print(best_params)
         return best_params
 
    

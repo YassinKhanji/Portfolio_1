@@ -51,7 +51,7 @@ class Calculations():
         htf_df = htf_df.reorder_levels([1, 0], axis = 0).sort_index(axis = 0)
 
         df = df_1.join(htf_df, how = 'outer')
-        df = df.unstack().ffill().stack()
+        df = df.unstack().ffill().stack(future_stack = True)
 
         return df
 
