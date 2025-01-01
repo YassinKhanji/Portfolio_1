@@ -5,11 +5,19 @@ from skopt import gp_minimize
 from skopt.space import Integer, Categorical, Real
 from skopt.utils import use_named_args
 import yfinance as yf
+import quantstats_lumi as qs
 
 
 
 class WFO():
-    def __init__(self, data, trading_strategy, param_grid, train_size, test_size, step_size, optimize_fn="grid"):
+    def __init__(self, data, 
+                 trading_strategy, 
+                 param_grid, 
+                 train_size, 
+                 test_size, 
+                 step_size, 
+                 optimize_fn="grid",
+                 objective = 'sharpe'):
         """
         This class performs a walk-forward optimization on a trading strategy.
 
@@ -20,6 +28,8 @@ class WFO():
         train_size (int): The number of data points to be used for training.
         test_size (int): The number of data points to be used for testing.
         step_size (int): The number of data points to step forward in each iteration.
+        optimize_fn (str): The optimization function to use ("grid" or "gp").
+        objective (str): The objective function to maximize ("sharpe", "sortino", "calmar", "multiple").
         """
         self.data = data
         self.trading_strategy = trading_strategy
@@ -28,12 +38,13 @@ class WFO():
         self.test_size = test_size
         self.step_size = step_size
         self.optimize_fn = optimize_fn
+        self.objective = objective
 
         max_param = max(
         param.high if isinstance(param, (Integer, Real)) else max(param) #To handle all different cases
         for param in param_grid.values()
         )
-        
+
         if step_size + train_size + test_size > len(data):
             raise ValueError("Invalid train, test, or step size.")
         if (train_size > max_param or test_size > max_param):
@@ -76,16 +87,34 @@ class WFO():
             yield train, test
             start += step_size
 
+    def objective_function(self, result):
+        strategy = result['strategy'].apply(np.exp - 1)
+
+        if self.objective == "multiple":
+            creturns = result['strategy'].cumsum().apply(np.exp)
+            performance = creturns.iloc[-1]
+        elif self.objective == "sharpe":
+            performance = qs.stats.sharpe(strategy)
+        elif self.objective == "sortino":
+            performance = qs.stats.sortino(strategy)
+        elif self.objective== "calmar": 
+            performance = qs.stats.calmar(strategy)
+        else:
+            raise ValueError("Invalid objective function")
+
+        return -performance
+
+
 
     #### Optimization Methods ####
     def optimize_parameters_grid(self, train_data, param_grid):
         best_params = None
-        best_performance = -np.inf
+        best_objective = -np.inf
         for params in ParameterGrid(param_grid):
             result = self.trading_strategy(train_data.copy(), **params)
-            performance = result['creturns'].iloc[-1]  # Get the last value of cumulative returns
-            if performance > best_performance:
-                best_performance = performance
+            objective = self.objective_function(result)  # Get the last value of cumulative returns
+            if objective > best_objective:
+                best_objective = objective
                 best_params = params
         return best_params
 
@@ -98,8 +127,8 @@ class WFO():
         def objective(**params):
             result = self.trading_strategy(train_data.copy(), **params)
             # Use negative performance because gp_minimize minimizes
-            performance = result["creturns"].iloc[-1]
-            return -performance if not pd.isnull(performance) else np.inf  # Handle invalid values
+            objective = self.objective_function(result) 
+            return -objective if not pd.isnull(objective) else np.inf  # Handle invalid values
 
         # Run gp_minimize
         result = gp_minimize(
