@@ -222,17 +222,16 @@ class WFO():
    
     def test_strategy(self, test_data, best_params):
         result = self.trading_strategy(test_data.copy(), **best_params)
-        if "creturns" in result.columns:
-            return result["creturns"].iloc[-1]
-        else:
-            return np.nan
+        peformance = self.objective_function(result)
+        return peformance, result
 
 
     def walk_forward_optimization(self):
         """
         Perform a walk-forward optimization on a dataset.
         """
-        results = []
+        all_performance = []
+        all_results = []
         for train, test in self.split_data(self.data, self.train_size, self.test_size, self.step_size):
             # Optimize on training data
             if self.optimize_fn == "grid":
@@ -241,8 +240,10 @@ class WFO():
                 best_params = self.optimize_parameters_gp(train, self.param_grid)
             
             # Test on out-of-sample data
-            performance = self.test_strategy(test, best_params)
+            performance, result = self.test_strategy(test, best_params)
             print(f"Out-of-sample performance: {performance}")
             
-            results.append(performance)
-        return results
+            all_performance.append(performance)
+            all_results.append(result)
+            
+        return all_performance, all_results
