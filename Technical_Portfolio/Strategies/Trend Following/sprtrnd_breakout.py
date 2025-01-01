@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import sys
 import os
+from typing import List
 
 
 
@@ -87,4 +88,8 @@ class Sprtrnd_Breakout():
     
     def test(self):
         pass
+
+    def stress_test(self):
+        pass
+    
         
