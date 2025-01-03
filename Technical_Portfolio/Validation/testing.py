@@ -17,7 +17,8 @@ class WFO():
                  test_size, 
                  step_size, 
                  optimize_fn="grid",
-                 objective = 'sharpe'):
+                 objective = 'sharpe',
+                 opt_freq = 'custom'):
         """
         This class performs a walk-forward optimization on a trading strategy.
 
@@ -30,17 +31,24 @@ class WFO():
         step_size (int): The number of data points to step forward in each iteration.
         optimize_fn (str): The optimization function to use ("grid" or "gp").
         objective (str): The objective function to maximize ("sharpe", "sortino", "calmar", "multiple").
+        opt_period (str): The period to optimize over ['custom', 'daily', 'weekly', 'quarterly', 'semi-annually', 'yearly'].
         """
         self.data = data
         self.trading_strategy = trading_strategy
         self.param_grid = param_grid
-        self.train_size = train_size
+        if opt_freq == 'custom':
+            self.train_size = train_size
+        else:
+            self.train_size = train_size = self.opt_freq(opt_freq)
         self.test_size = test_size
         self.step_size = step_size
         self.optimize_fn = optimize_fn
         self.objective = objective
         
-        minimum_train_size = self.min_train_test_size(train_size)
+        if train_size > 0:
+            self.minimum_train_size = self.min_train_test_size(train_size)
+        else:
+            raise ValueError("Train size must be greater than 0.")
 
         max_param = max(
         param.high if isinstance(param, (Integer, Real)) else max(param) #To handle all different cases
@@ -55,8 +63,8 @@ class WFO():
             raise ValueError("Train, test, and step size must be greater than 0.")
         elif test_size < train_size:
             raise ValueError("Test size must be greater or equal to train size.")
-        elif minimum_train_size > train_size:
-            train_size = minimum_train_size
+        elif self.minimum_train_size > train_size:
+            train_size = self.minimum_train_size
             print(f"Adjusted train size to {train_size}")
     
         if optimize_fn not in ["grid", "gp"]:
@@ -145,7 +153,8 @@ class WFO():
         Note that we have only included objective functions that we want to maximize.
         """
         if 'strategy' not in result.columns:
-            raise ValueError("The result DataFrame must have a 'strategy' column.")
+            print("No strategy column in result")
+            return 0
 
         strategy = result['strategy'].apply(np.exp) - 1
 
@@ -165,6 +174,25 @@ class WFO():
             raise ValueError("Invalid objective function")
 
         return performance
+    
+    def opt_freq(self, opt_freq):
+        time_diff = data.unstack().index.get_level_values(0)[1] - data.unstack().index.get_level_values(0)[0]
+
+        if opt_freq == 'daily':
+            return pd.Timedelta('1 day') // time_diff
+        elif opt_freq == 'weekly':
+            return pd.Timedelta('1 w') // time_diff
+        elif opt_freq == 'monthly':
+            return pd.Timedelta('1 m') // time_diff
+        elif opt_freq == 'quarterly':
+            return pd.Timedelta('3 m') // time_diff
+        elif opt_freq == 'semi-annually':
+            return pd.Timedelta('6 m') // time_diff
+        elif opt_freq == 'yearly':
+            return pd.Timedelta('1 y') // time_diff
+        else:
+            raise ValueError("Invalid optimization frequency")
+    
     
 
 
