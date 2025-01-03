@@ -12,10 +12,10 @@ from collections.abc import Iterable
 class WFO():
     def __init__(self, data, 
                  trading_strategy, 
-                 param_grid, 
-                 train_size, 
-                 test_size, 
-                 step_size, 
+                 param_grid = {}, 
+                 train_size = 1000, 
+                 test_size = 1000, 
+                 step_size = 1000, 
                  optimize_fn="grid",
                  objective = 'sharpe',
                  opt_freq = 'custom'):
@@ -176,7 +176,7 @@ class WFO():
         return performance
     
     def opt_freq(self, opt_freq):
-        time_diff = data.unstack().index.get_level_values(0)[1] - data.unstack().index.get_level_values(0)[0]
+        time_diff = self.data.unstack().index.get_level_values(0)[1] - self.data.unstack().index.get_level_values(0)[0]
 
         if opt_freq == 'daily':
             return pd.Timedelta('1 day') // time_diff
