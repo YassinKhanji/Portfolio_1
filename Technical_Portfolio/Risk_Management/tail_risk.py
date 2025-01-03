@@ -314,7 +314,7 @@ class Take_Profit():
         """
         We are looking for a high that is above the current take profit (of this session)
         """
-        group[("exit_signal_tp", coin)] = 0  # Initialize with 0
+        group[("exit_signal_tp", coin)] = 0.0  # Initialize with 0
         if (group['high', coin] >= group['session_take_profit', coin]).any():
             start = group[group['high', coin] >= group['session_take_profit', coin]].index[0]
             group.loc[start, ("exit_signal_tp", coin)] = self.exit_percent

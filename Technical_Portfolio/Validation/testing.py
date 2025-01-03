@@ -217,6 +217,7 @@ class WFO():
         # Extract the best parameters
         best_params = {dim.name: val for dim, val in zip(param_space, result.x)}
         print(best_params)
+        print(result.x)
         return best_params
 
    
@@ -245,5 +246,6 @@ class WFO():
             
             all_performance.append(performance)
             all_results.append(result)
-            
+        
+        all_results = pd.concat(all_results)
         return all_performance, all_results
