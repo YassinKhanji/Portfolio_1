@@ -95,6 +95,7 @@ class Mean_Reversion():
         cal = Calculations()
         htf_df = cal.downsample(df.copy())[[f'htf_{col}' for col in ['open', 'high', 'low', 'close', 'volume','volume_in_dollars']]]\
             .unstack().shift(daily_lookback).stack(future_stack = True)
+        htf_df.columns = [f'shifted_daily_{col}' for col in htf_df.columns]
         htf_reindexed = htf_df.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
             .ffill().stack(future_stack = True)
         df = pd.concat([df, htf_reindexed], axis = 1)
