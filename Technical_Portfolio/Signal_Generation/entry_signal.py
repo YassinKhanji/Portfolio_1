@@ -69,44 +69,72 @@ class Mean_Reversion():
         daily_lookback: int
         """
 
-        #Getting parameters
-        start_time = df.index.levels[0][0].strftime('%Y-%m-%d')
-        end_time = df.index.levels[0][-1].strftime('%Y-%m-%d')
-        symbols = df.index.levels[1].unique()
+        ############################################################
+        # #Getting parameters
+        # start_time = df.index.levels[0][0].strftime('%Y-%m-%d')
+        # end_time = df.index.levels[0][-1].strftime('%Y-%m-%d')
+        # symbols = df.index.levels[1].unique()
 
-        #Get the daily data and clean it
-        df_daily = Data(symbols, '1d', start_time, end_time).df
-        df_daily = df_daily[['open', 'high', 'low', 'close']]
-        df_daily = df_daily.unstack().shift(daily_lookback).stack(future_stack = True)
-        df_daily.columns = [f'shifted_daily_{col}' for col in df_daily.columns]
+        # #Get the daily data and clean it
+        # df_daily = Data(symbols, '1d', start_time, end_time).df
+        # df_daily = df_daily[['open', 'high', 'low', 'close']]
+        # df_daily = df_daily.unstack().shift(daily_lookback).stack(future_stack = True)
+        # df_daily.columns = [f'shifted_daily_{col}' for col in df_daily.columns]
 
-        #Reindex the daily data to match the hourly data
-        df_daily_reindexed = df_daily.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
-        .ffill().stack(future_stack = True)
+        # #Reindex the daily data to match the hourly data
+        # df_daily_reindexed = df_daily.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
+        # .ffill().stack(future_stack = True)
 
 
-        #Concatenate the dataframes
-        df = pd.concat([df, df_daily_reindexed], axis = 1)
+        # #Concatenate the dataframes
+        # df = pd.concat([df, df_daily_reindexed], axis = 1)
+        ############################################################
+        
+        #Get the daily Data and shift it
+        df = df.copy()
+        cal = Calculations()
+        htf_df = cal.downsample(df.copy())[[f'htf_{col}' for col in ['open', 'high', 'low', 'close', 'volume','volume_in_dollars']]]\
+            .unstack().shift(daily_lookback).stack(future_stack = True)
+        htf_reindexed = htf_df.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
+            .ffill().stack(future_stack = True)
+        df = pd.concat([df, htf_reindexed], axis = 1)
 
         #Now to generate a direction column:
         # 1 if the close is above the daily close and last open is above the daily close and last close is below the daily close, else 0
 
         #Before that, we need to make sure we are dealing with the same date when comparing the daily low with the hourly closes
-        _df = df[[]] #We don't need any of the columns, just the index (removing them to make sure it runs faster)
-        _df.loc[:, 'date_only'] = _df.index.get_level_values(0).strftime('%Y-%m-%d') # Extract the date part from the datetime index
-        _df.loc[:, 'previous_date'] = _df['date_only'].shift(1) # Shift the date column by one row
-        _df['same_date'] = (_df['date_only'] == _df['previous_date']) # Compare the current date with the previous date
-        df.loc[:, 'same_date']  = _df['same_date']
-        df = df.unstack() #We have to unstack because we will be shifting columns later on for every single coin
+        # Create an explicit copy to ensure _df is not a view
+        _df = df[[]].copy()  # Explicitly copy the DataFrame structure
 
-        
+        # Perform all operations with .loc to avoid chained indexing
+        _df['date_only'] = _df.index.get_level_values(0).strftime('%Y-%m-%d')  # Extract the date part from the datetime index
+        _df['previous_date'] = _df['date_only'].shift(1)  # Shift the date column by one row
+        _df['same_date'] = _df['date_only'] == _df['previous_date']  # Compare the current date with the previous date
 
-        #Direction column
+        # Assign back to the original DataFrame safely
+        df = df.copy()  # Explicitly copy the original DataFrame to avoid warnings
+        df['same_date'] = _df['same_date']  # Use assignment directly instead of .loc to ensure clarity
+
+        # Unstack safely
+        df = df.unstack()
+
+        # Direction column
         for coin in df.columns.get_level_values(1).unique():
-            df['last_days_low', coin] = df['same_date', coin] & (df['open', coin].shift(hourly_lookback) > df['shifted_daily_low', coin]) &\
-            (df['close', coin].shift(hourly_lookback) < df['shifted_daily_low', coin]) & (df['close', coin] > df['shifted_daily_low', coin]) &\
-            (df['close', coin].shift(hourly_lookback + 1) > df['shifted_daily_low', coin]) #Ensures that price is pulling back to the daily low, and not going from below it to above it
+            df[('last_days_low', coin)] = (
+                df[('same_date', coin)] &
+                (df[('open', coin)].shift(hourly_lookback) > df[('shifted_daily_low', coin)]) &
+                (df[('close', coin)].shift(hourly_lookback) < df[('shifted_daily_low', coin)]) &
+                (df[('close', coin)] > df[('shifted_daily_low', coin)]) &
+                (df[('close', coin)].shift(hourly_lookback + 1) > df[('shifted_daily_low', coin)])
+            )
+        
+        df = df.stack(future_stack=True)
 
-        df['entry_signal'] = df['last_days_low'].astype(int).shift(1).stack() #We shift by one to avoid look ahead bias (we get the signals on the next candle)
+        # Create the entry_signal column
+        df['entry_signal'] = (
+            df['last_days_low']
+            .astype(int)
+            .shift(1)
+        )
 
         return df
