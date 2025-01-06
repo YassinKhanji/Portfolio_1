@@ -125,7 +125,7 @@ class Mean_Reversion():
                 df[('same_date', coin)] &
                 (df[('open', coin)].shift(hourly_lookback) > df[('shifted_htf_low', coin)]) &
                 (df[('close', coin)].shift(hourly_lookback) < df[('shifted_htf_low', coin)]) &
-                (df[('close', coin)] > df[('shifted_daily_low', coin)]) &
+                (df[('close', coin)] > df[('shifted_htf_low', coin)]) &
                 (df[('close', coin)].shift(hourly_lookback + 1) > df[('shifted_htf_low', coin)])
             )
         
