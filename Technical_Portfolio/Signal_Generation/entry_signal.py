@@ -91,14 +91,15 @@ class Mean_Reversion():
         ############################################################
         
         #Get the daily Data and shift it
-        df = df.copy()
+        data = df.copy()
         cal = Calculations()
-        htf_df = cal.downsample(df.copy())[[f'htf_{col}' for col in ['open', 'high', 'low', 'close', 'volume','volume_in_dollars']]]\
-            .unstack().shift(daily_lookback).stack(future_stack = True)
+        htf_df = cal.downsample(data.copy())[[f'htf_{col}' for col in ['open', 'high', 'low', 'close', 'volume_in_dollars']]]
+        #Shift the htf_df by 1
+        htf_df = htf_df.unstack().shift(periods = 1, freq = 'D').stack(future_stack = True)
         htf_df.columns = [f'shifted_{col}' for col in htf_df.columns]
-        htf_reindexed = htf_df.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
+        htf_reindexed = htf_df.unstack().reindex(data[~data.index.duplicated()].unstack().index.get_level_values(0))\
             .ffill().stack(future_stack = True)
-        df = pd.concat([df, htf_reindexed], axis = 1)
+        df = pd.concat([data, htf_reindexed], axis = 1)
 
         #Now to generate a direction column:
         # 1 if the close is above the daily close and last open is above the daily close and last close is below the daily close, else 0
@@ -135,7 +136,6 @@ class Mean_Reversion():
         df['entry_signal'] = (
             df['last_days_low']
             .astype(int)
-            .shift(1)
         )
 
         return df
