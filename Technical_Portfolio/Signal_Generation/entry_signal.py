@@ -107,6 +107,6 @@ class Mean_Reversion():
             (df['close', coin].shift(hourly_lookback) < df['shifted_daily_low', coin]) & (df['close', coin] > df['shifted_daily_low', coin]) &\
             (df['close', coin].shift(hourly_lookback + 1) > df['shifted_daily_low', coin]) #Ensures that price is pulling back to the daily low, and not going from below it to above it
 
-        df['entry_signal'] = df['last_days_low'].astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
+        df['entry_signal'] = df['last_days_low'].stack().astype(int).shift(1) #We shift by one to avoid look ahead bias (we get the signals on the next candle)
 
         return df
