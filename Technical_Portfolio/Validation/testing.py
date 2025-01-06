@@ -161,17 +161,21 @@ class WFO():
         if strategy.sum() == 0:
             return 0
 
-        if self.objective == "multiple":
-            creturns = result['strategy'].cumsum().apply(np.exp)
-            performance = creturns.iloc[-1]
-        elif self.objective == "sharpe":
-            performance = qs.stats.sharpe(strategy)
-        elif self.objective == "sortino":
-            performance = qs.stats.sortino(strategy)
-        elif self.objective == "calmar": 
-            performance = qs.stats.calmar(strategy)
-        else:
-            raise ValueError("Invalid objective function")
+        try:
+            if self.objective == "multiple":
+                creturns = result['strategy'].cumsum().apply(np.exp)
+                performance = creturns.iloc[-1]
+            elif self.objective == "sharpe":
+                performance = qs.stats.sharpe(strategy)
+            elif self.objective == "sortino":
+                performance = qs.stats.sortino(strategy)
+            elif self.objective == "calmar": 
+                performance = qs.stats.calmar(strategy)
+            else:
+                raise ValueError("Invalid objective function")
+        except Exception as e:
+            print(f"Error calculating performance: {e}")
+            performance = 0
 
         return performance
     
