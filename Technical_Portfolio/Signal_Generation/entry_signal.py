@@ -95,7 +95,7 @@ class Mean_Reversion():
         cal = Calculations()
         htf_df = cal.downsample(df.copy())[[f'htf_{col}' for col in ['open', 'high', 'low', 'close', 'volume','volume_in_dollars']]]\
             .unstack().shift(daily_lookback).stack(future_stack = True)
-        htf_df.columns = [f'shifted_daily_{col}' for col in htf_df.columns]
+        htf_df.columns = [f'shifted_{col}' for col in htf_df.columns]
         htf_reindexed = htf_df.unstack().reindex(df[~df.index.duplicated()].unstack().index.get_level_values(0))\
             .ffill().stack(future_stack = True)
         df = pd.concat([df, htf_reindexed], axis = 1)
@@ -123,10 +123,10 @@ class Mean_Reversion():
         for coin in df.columns.get_level_values(1).unique():
             df[('last_days_low', coin)] = (
                 df[('same_date', coin)] &
-                (df[('open', coin)].shift(hourly_lookback) > df[('shifted_daily_low', coin)]) &
-                (df[('close', coin)].shift(hourly_lookback) < df[('shifted_daily_low', coin)]) &
+                (df[('open', coin)].shift(hourly_lookback) > df[('shifted_htf_low', coin)]) &
+                (df[('close', coin)].shift(hourly_lookback) < df[('shifted_htf_low', coin)]) &
                 (df[('close', coin)] > df[('shifted_daily_low', coin)]) &
-                (df[('close', coin)].shift(hourly_lookback + 1) > df[('shifted_daily_low', coin)])
+                (df[('close', coin)].shift(hourly_lookback + 1) > df[('shifted_htf_low', coin)])
             )
         
         df = df.stack(future_stack=True)
