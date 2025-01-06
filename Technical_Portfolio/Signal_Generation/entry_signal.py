@@ -93,10 +93,10 @@ class Mean_Reversion():
 
         #Before that, we need to make sure we are dealing with the same date when comparing the daily low with the hourly closes
         _df = df[[]] #We don't need any of the columns, just the index (removing them to make sure it runs faster)
-        _df['date_only'] = _df.index.get_level_values(0).strftime('%Y-%m-%d') # Extract the date part from the datetime index
-        _df['previous_date'] = _df['date_only'].shift(1) # Shift the date column by one row
-        _df['same_date'] = _df['date_only'] == _df['previous_date'] # Compare the current date with the previous date
-        df['same_date']  = _df['same_date']
+        _df.loc[:, 'date_only'] = _df.index.get_level_values(0).strftime('%Y-%m-%d') # Extract the date part from the datetime index
+        _df.loc[:, 'previous_date'] = _df['date_only'].shift(1) # Shift the date column by one row
+        _df['same_date'] = (_df['date_only'] == _df['previous_date']) # Compare the current date with the previous date
+        df.loc[:, 'same_date']  = _df['same_date']
         df = df.unstack() #We have to unstack because we will be shifting columns later on for every single coin
 
         

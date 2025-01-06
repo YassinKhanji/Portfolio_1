@@ -84,7 +84,7 @@ class Data:
             df['price', coin] = df['close', coin]
             df['volume_in_dollars', coin] = df['close', coin] * df['volume', coin]
 
-        df = df.stack(level=1)
+        df = df.stack(future_stack=True)
         df.sort_index(axis=1, inplace=True)
         df.index.names = ['date', 'coin']
         df.dropna(inplace=True)
