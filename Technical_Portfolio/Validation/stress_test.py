@@ -11,7 +11,7 @@ class Hypothesis_Testing():
         self.df = df
         self.score = 0
     
-class Param_Sensitivity():
+class Param_Sens():
     def __init__(self, df):
         self.df = df
         self.score = 0
