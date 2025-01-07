@@ -76,6 +76,12 @@ class Sprtrnd_Breakout():
         for time_index in df.index.get_level_values(0).unique():
             # Remove coins that are no longer in the universe *for this time index*
             coins_to_remove = []
+            
+            for coin in df.index.get_level_values(1):
+                current_position = df.loc[(time_index, coin), 'position']
+                current_position = np.where(current_position < 0.1, 0, current_position) #Since when optimizing, min_pos can never be 0, thus we put a threshold of 0.1 to indicate a non position
+        
+            
             for coin in current_universe:
                 if (time_index, coin) in df.index and df.loc[(time_index, coin), 'position'] == 0:
                     coins_to_remove.append(coin)
@@ -277,6 +283,16 @@ class Sprtrnd_Breakout():
                     print(f"Mean performance: {np.mean(all_performance)}")
 
     def stress_test(self):
+        """
+        Stress test the strategy using some of the following methods:
+        1. Monte Carlo Simulation
+        2. Parameter Stability Test
+        3. Hypothesis Testing
+        4. Crash Testing
+        
+        
+        
+        """
         pass
     
         
