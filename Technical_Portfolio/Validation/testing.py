@@ -63,9 +63,10 @@ class WFO():
             raise ValueError("Train, test, and step size must be greater than 0.")
         elif test_size < train_size:
             raise ValueError("Test size must be greater or equal to train size.")
-        elif self.minimum_train_size > train_size:
-            train_size = self.minimum_train_size
-            print(f"Adjusted train size to {train_size}")
+        #It is kind of wrong to say this because data can be empty because there are no trades or no universe
+        # elif self.minimum_train_size > train_size:
+        #     train_size = self.minimum_train_size
+        #     print(f"Adjusted train size to {train_size}")
     
         if optimize_fn not in ["grid", "gp"]:
             raise ValueError("Invalid optimization function")
