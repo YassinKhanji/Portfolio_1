@@ -65,7 +65,7 @@ class Calculations():
         
 
         for coin in _df['close'].columns:
-            full_trade = _df['position', coin].diff().fillna(0).abs()
+            full_trade = _df['position', coin].diff().fillna(0)
             _df['trades', coin] = np.where(full_trade == 1, 1, full_trade) #This will account when we take partials
 
         #A case where we start with a position, we need to add a trade
@@ -144,7 +144,7 @@ class Calculations():
         _df = df.copy().unstack()
 
         for coin in _df['close'].columns:
-            _df['session', coin] = np.sign(_df['trades', coin]).cumsum().shift().fillna(0)
+            _df['session', coin] = np.sign(np.floor(_df['trades', coin].abs())).cumsum().shift().fillna(0)
             _df[('session_compound', coin)] = _df['strategy', coin].groupby(_df['session', coin]).cumsum().apply(np.exp)
             _df[('overall_session_return', coin)] = _df['session_compound', coin].groupby(_df['session', coin]).transform(lambda x: x.iloc[-1] - 1)
         

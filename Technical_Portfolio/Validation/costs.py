@@ -18,11 +18,10 @@ class Costs:
 
 
         for coin in _df['close'].columns:
-            _df['trades_with_partials', coin] = _df['position', coin].diff().fillna(0)
             _df['trade_costs', coin] = np.where(
-                _df['trades_with_partials', coin] > 0,
-                _df['trades_with_partials', coin] * (maker / 100),
-                _df['trades_with_partials', coin] * (taker / 100) * (-1)
+                _df['trades', coin] > 0,
+                _df['trades', coin] * (maker / 100),
+                _df['trades', coin] * (taker / 100) * (-1)
             )
             _df['strategy', coin] = _df['strategy', coin] - _df['trade_costs', coin]
             
