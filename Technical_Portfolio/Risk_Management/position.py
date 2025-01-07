@@ -95,7 +95,7 @@ class Position():
                     df.loc[df.index[i], ('position', coin)] = df.loc[df.index[i-1], ('position', coin)]
 
             df.loc[:, ('position', coin)] = df.loc[:, ('position', coin)].shift(1)
-            df.loc[:, ('position', coin)] = np.clip(df.loc[:, ('position', coin)], self._min, self._max)
+            df.loc[:, ('position', coin)] = np.clip(df.loc[:, ('position', coin)], a_min = self._min, a_max = self._max)
         
         self.df = df.stack(future_stack=True)
         

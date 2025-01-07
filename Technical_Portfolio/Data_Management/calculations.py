@@ -144,7 +144,7 @@ class Calculations():
         _df = df.copy().unstack()
 
         for coin in _df['close'].columns:
-            _df['session', coin] = np.sign(np.floor(_df['trades', coin].abs())).cumsum().shift().fillna(0)
+            _df['session', coin] = np.sign(np.ceil(_df['trades', coin].abs())).cumsum().shift().fillna(0)
             _df[('session_compound', coin)] = _df['strategy', coin].groupby(_df['session', coin]).cumsum().apply(np.exp)
             _df[('overall_session_return', coin)] = _df['session_compound', coin].groupby(_df['session', coin]).transform(lambda x: x.iloc[-1] - 1)
         
