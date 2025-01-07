@@ -13,7 +13,7 @@ class Costs:
         self.maker = maker
         self.taker = taker
     
-    def apply_fees(self, df, maker = 0.25, taker = 0.40):
+    def apply_fees(self, maker = 0.25, taker = 0.40):
         _df = self.df.copy().unstack()
 
 
@@ -30,5 +30,5 @@ class Costs:
             
         return self.df
     
-    def apply_slippage(self, df):
+    def apply_slippage(self):
         pass

@@ -65,8 +65,8 @@ class Calculations():
         
 
         for coin in _df['close'].columns:
-            full_trade = _df['position', coin].diff().fillna(0).abs() 
-            _df['trades', coin] = np.where(full_trade == 1, 1, 0) #This will account when we take partials
+            full_trade = _df['position', coin].diff().fillna(0).abs()
+            _df['trades', coin] = np.where(full_trade == 1, 1, full_trade) #This will account when we take partials
 
         #A case where we start with a position, we need to add a trade
         for coin in _df['close'].columns:
