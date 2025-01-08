@@ -79,7 +79,7 @@ class Data:
         df = df.copy()
         for coin in df.columns.levels[1]:
             df['returns', coin] = df['close', coin].pct_change()
-            df['log_return', coin] = np.log1p(df['returns', coin])
+            df['log_return', coin] = np.log(df['returns', coin] + 1)
             df["creturns", coin] = df["log_return", coin].cumsum().apply(np.exp)
             df['price', coin] = df['close', coin]
             df['volume_in_dollars', coin] = df['close', coin] * df['volume', coin]
