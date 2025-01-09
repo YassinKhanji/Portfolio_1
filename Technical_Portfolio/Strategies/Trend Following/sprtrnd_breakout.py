@@ -27,7 +27,8 @@ from tail_risk import Stop_Loss, Take_Profit
 from position_size import Position
 from manage_trade import Manage_Trade
 from testing import WFO
-
+from Costs import Costs
+from stress_test import Stress_Test
 
 class Sprtrnd_Breakout():
     def __init__(self, df, optimize_fn="gp", 
@@ -52,38 +53,42 @@ class Sprtrnd_Breakout():
         'ptp_exit_percent': Real(0.1, 1)
         }
         self.all_frequency = ['1W', '1D', '4h','1h', '30min','15min', '5min', '1min'] #All possible frequencies for the resampling 
-        self.best_performance = -np.inf
-        self.best_train_size = 0
-        self.best_test_size = 0
-        self.best_step_size = 0
-        self.best_results = None
-
-        self.test()
+        
+        self.performance = -np.inf
+        self.results = None
+        self.train_size = 2000
+        self.test_size = 2000
+        self.step_size = 2000
+        
+        self.overall_score = 0.0
+        self.metrics_df = None
+        self.sims = None
+        
+        
 
         
 
     
 
-    def update_universe(self, df: pd.DataFrame, max_positions: int = 4) -> pd.Series:
+    def update_universe(self, df: pd.DataFrame, max_positions: int = 4, low_freq = '1d') -> pd.Series:
         """
         Updates a DataFrame to track a dynamic universe of coins.
         Should include the dataframe with the lower frequency data. (daily, weekly, etc.)
         Assumes a stacked dataframe
         """
+        threshold = 0.1
         current_universe = set()
         df['in_universe'] = False
+        df['position'] = np.where(df['position'] < threshold, 0, df['position']) #Since when optimizing, min_pos can never be 0, thus we put a threshold of 0.1 to indicate a non position    
+
 
         for time_index in df.index.get_level_values(0).unique():
             # Remove coins that are no longer in the universe *for this time index*
             coins_to_remove = []
             
-            for coin in df.index.get_level_values(1):
-                current_position = df.loc[(time_index, coin), 'position']
-                current_position = np.where(current_position < 0.1, 0, current_position) #Since when optimizing, min_pos can never be 0, thus we put a threshold of 0.1 to indicate a non position
-        
             
             for coin in current_universe:
-                if (time_index, coin) in df.index and df.loc[(time_index, coin), 'position'] == 0:
+                if (time_index, coin) in df.index and df.loc[(time_index, coin), 'position'] == 0: 
                     coins_to_remove.append(coin)
                     df.loc[(time_index, coin), 'in_universe'] = False
             current_universe.difference_update(coins_to_remove) #use difference_update for set manipulation
@@ -119,41 +124,44 @@ class Sprtrnd_Breakout():
             df.loc[(time_index, list(current_universe)), 'in_universe'] = True
         
         df = df.unstack()
-        df['in_universe'] = df['in_universe'].shift(periods = 1, freq = '1d')
-        self.df = df = df.stack(future_stack = True)
+        df['in_universe'] = df['in_universe'].shift(periods = 1, freq = low_freq)
+        df = df.stack(future_stack= True)
         return df['in_universe'], current_universe
 
-    def strategy(self,
-            data,
-            params = None,
-            ###### To Optimize ######
-            std_window = 20,
-            mean_window = 20,
-            ema_window = 20,
-            str_length = 10,
-            str_mult = 3,
-            _min_pos = 0, #Has to be >= 0
-            _max_pos = 1, #Has to be > 0
-            sl_ind_length = 14,
-            sl_ind_mult = 3,
-            tp_mult = 2,
-            ptp_mult = 1,
-            ptp_exit_percent = 0.5,
-            ###### Constants ######
-            low_freq_index = 1, #The index of the lowest frequency for the resampling
-            high_freq_index = 3, #The index of the highest frequency for the resampling
-            max_perc_risk = 0.01,
-            max_dollar_allocation = 10000,
-            sl_type = 'atr',
-            tp_type = 'rr',
-            sl_signal_only = True,
-            tp_signal_only = True,
-            ptp_signal_only = True,
-            tp_ind_length = 0,
-            fixed_sl = True,
-            fixed_tp = True
-            ):
-        
+    def trading_strategy(self,
+        data,
+        params = None,
+        ###### To Optimize ######
+        std_window = 20,
+        mean_window = 20,
+        ema_window = 20,
+        str_length = 10,
+        str_mult = 3,
+        _min_pos = 0, #Has to be >= 0
+        _max_pos = 1, #Has to be > 0
+        sl_ind_length = 14,
+        sl_ind_mult = 3,
+        tp_mult = 2,
+        ptp_mult = 1,
+        ptp_exit_percent = 0.5,
+        ###### Constants ######
+        low_freq_index = 1, #The index of the lowest frequency for the resampling
+        high_freq_index = 3, #The index of the highest frequency for the resampling
+        max_perc_risk = 0.01,
+        max_dollar_allocation = 10000,
+        sl_type = 'atr',
+        tp_type = 'rr',
+        sl_signal_only = True,
+        tp_signal_only = True,
+        ptp_signal_only = True,
+        tp_ind_length = 0,
+        fixed_sl = True,
+        fixed_tp = True,
+        maker = 0.25,
+        taker = 0.40,
+        max_universe = 4
+        ):
+    
         if params is not None:
             if isinstance(params, list):
                 std_window = params[0]
@@ -188,14 +196,14 @@ class Sprtrnd_Breakout():
             low_freq = self.all_frequency[low_freq_index] #The lowest frequency for the resampling
             high_freq = self.all_frequency[high_freq_index], #The highest frequency for the resampling
                 #Generally not going to be used since we are not calling the data inside the function
-
-        ######################### Signal Generation #########################
-
-        #Generate a signal
+        
+        #########################
+        
+        cal = Calculations()
         tf = Trend_Following()
+        #Generate a signal
         _df = tf.supertrend_signals(data.copy(), str_length, str_mult)
 
-        #Apply tail risk management
         pos = Position(_df, _min_pos, _max_pos)
         _df = pos.initialize_position()
         sl = Stop_Loss(_df, sl_type, sl_ind_length, sl_ind_mult, sl_signal_only)
@@ -205,22 +213,24 @@ class Sprtrnd_Breakout():
         ptp = Take_Profit(_df, tp_type, ptp_mult, ptp_signal_only, exit_percent = ptp_exit_percent)
         _df = ptp.apply_take_profit(fixed_tp, plot = False)
 
-        #Calculate the position size
         _df = cal.merge_cols(_df, common = 'exit_signal', use_clip = True)
         _df = pos.calculate_position(_df)
 
-        #Manage the trade
         mt = Manage_Trade(_df)
         _df = mt.erw_actual_allocation(max_perc_risk, max_dollar_allocation)
-
-        ######################### Universe Selection #########################
-
-        #Update all the columns
-        cal = Calculations()
+        
         _df = cal.update_all(_df)
 
+        #########################
+        
+        #Calculate transaction costs on strategy returns
+        costs = Costs(_df, maker = maker, taker = taker)
+        df = costs.apply_fees() #Applies fees on strategy returns, appears on cumulative returns when applied 
+
+        #########################
+        
         #Downsample the data
-        df = cal.downsample(_df, low_freq)
+        df = cal.downsample(df, low_freq)
 
         #Perform coarse analysis and filtering
         coarse = Coarse()
@@ -231,13 +241,15 @@ class Sprtrnd_Breakout():
         df = fine.above_ema(df, ema_window)
 
         #apply update_univers
-        df['in_universe'], current_universe = self.update_universe(df)
+        df['in_universe'], current_universe = self.update_universe(df, max_positions = max_universe)
 
         df.dropna(inplace = True)
 
         df = df[df['in_universe']]
-
+        
         return df
+
+
     
     def optimize(self):
         """
@@ -250,37 +262,35 @@ class Sprtrnd_Breakout():
 
         """
         wfo = WFO(self.df, 
-                self.strategy)
+                self.trading_strategy)
         
-        best_params = wfo.optimize_parameter_gp(self.best_train_size, self.param_space)
-        optimized = wfo.test_strategy(self.best_test_size, best_params)
+        best_params = wfo.optimize_parameter_gp(self.train_size, self.param_space)
+        optimized = wfo.test_strategy(self.test_size, best_params)
 
         return optimized
 
     
     def test(self) -> None:
+        """
+        Test the strategy using the best parameters from the optimization
 
-        for train_size in range(1000, 3001, 500):  # Adjust the step size as needed
-            for test_size in range(1000, 3001, 500):
-                for step_size in range(1000, 3001, 500):
-                    wfo = WFO(self.df, 
-                            self.strategy, 
-                            self.param_space, 
-                            train_size=train_size, 
-                            test_size=test_size, 
-                            step_size=step_size, 
-                            optimize_fn="gp", 
-                            objective='sharpe', 
-                            opt_freq='custom')
-                    print(f"Train size: {train_size}, Test size: {test_size}, Step size: {step_size}")
-                    all_performance, all_results = wfo.walk_forward_optimization()
-                    if np.mean(all_performance) > self.best_performance:
-                        self.best_performance = np.mean(all_performance)
-                        self.best_train_size = train_size
-                        self.best_test_size = test_size
-                        self.best_step_size = step_size
-                        self.best_results = all_results
-                    print(f"Mean performance: {np.mean(all_performance)}")
+        Returns:
+            results: The results of the test
+
+        """
+        wfo = WFO(self.df, 
+                    self.trading_strategy, 
+                    self.param_space, 
+                    train_size=2000, 
+                    test_size=2000, 
+                    step_size=2000, 
+                    optimize_fn="gp", 
+                    objective='multiple', 
+                    opt_freq='custom')
+
+        self.performance, self.results = wfo.walk_forward_optimization()
+        
+        
 
     def stress_test(self):
         """

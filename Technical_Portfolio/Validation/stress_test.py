@@ -50,7 +50,8 @@ class Returns_Metrics():
         lower_bound = np.percentile(metric_series, (1-confidence_level)/2 * 100)
         upper_bound = np.percentile(metric_series, (1+confidence_level)/2 * 100)
         return lower_bound, upper_bound
-
+    
+    
 class Stress_Test():
     def __init__(self, returns, num_simulations, confidence_level):
         self.returns = returns
@@ -72,9 +73,9 @@ class Stress_Test():
         df, loc, scale = stats.t.fit(self.returns)
         simulated_returns = stats.t.rvs(df, loc=loc, scale=scale, size=(self.num_simulations, len(self.returns)))
         simulated_cumulative_returns = np.exp(simulated_returns.cumsum(axis=1))
-        simulated_prices_df = pd.DataFrame(simulated_cumulative_returns)
+        simulated_prices_df = pd.DataFrame(simulated_cumulative_returns).transpose()
         for i in range(self.num_simulations):
-            plt.plot(simulated_cumulative_returns[i, :])
+            plt.plot(simulated_cumulative_returns[i])
         return simulated_prices_df
     
     def block_bootstrap(self, block_size):
@@ -85,7 +86,9 @@ class Stress_Test():
             resampled = np.concatenate(sampled_blocks)[:len(self.returns)]
             resampled_cum = np.exp(resampled.cumsum())
             resampled_series.append(resampled_cum)
-        return pd.DataFrame(resampled_series)
+            for i in range(self.num_simulations):
+                plt.plot(simulated_cumulative_returns[i])
+        return pd.DataFrame(resampled_series).transpose()
     
     def metrics_df_fnct(self, sims_df):
         metrics_dict = {
