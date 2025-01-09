@@ -58,6 +58,7 @@ class Sprtrnd_Breakout():
         'ptp_exit_percent': Real(0.1, 1)
         }
         self.all_frequency = ['1W', '1D', '4h','1h', '30min','15min', '5min', '1min'] #All possible frequencies for the resampling 
+        self.current_universe = set()
         
         self.performance = -np.inf
         self.results = None
@@ -65,6 +66,7 @@ class Sprtrnd_Breakout():
         self.test_size = 2000
         self.step_size = 2000
         
+        self.best_params = None
         self.cum_strategy = None
         
         self.num_simulations = num_simulations
@@ -250,7 +252,7 @@ class Sprtrnd_Breakout():
         df = fine.above_ema(df, ema_window)
 
         #apply update_univers
-        df['in_universe'], current_universe = self.update_universe(df, max_positions = self.max_universe)
+        df['in_universe'], self.current_universe = self.update_universe(df, max_positions = self.max_universe)
 
         df.dropna(inplace = True)
 
@@ -274,8 +276,8 @@ class Sprtrnd_Breakout():
         wfo = WFO(self.df, 
                 self.trading_strategy)
         
-        best_params = wfo.optimize_parameter_gp(self.train_size, self.param_space)
-        optimized = wfo.test_strategy(self.test_size, best_params)
+        self.best_params = wfo.optimize_parameter_gp(self.train_size, self.param_space)
+        optimized = wfo.test_strategy(self.test_size, self.best_params)
 
         return optimized
 
