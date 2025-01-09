@@ -33,7 +33,9 @@ from stress_test import Stress_Test
 class Sprtrnd_Breakout():
     def __init__(self, df, optimize_fn="gp", 
                             objective='sharpe', 
-                            opt_freq='custom'):
+                            opt_freq='custom', 
+                            num_simulations = 1000,
+                            confidence_level = 0.95):
         self.df = df.copy()
         self.optimize_fn = optimize_fn
         self.objective = objective
@@ -59,7 +61,10 @@ class Sprtrnd_Breakout():
         self.train_size = 2000
         self.test_size = 2000
         self.step_size = 2000
+        self.cum_strategy = None
         
+        self.num_simulations = num_simulations
+        self.confidence_level = confidence_level
         self.overall_score = 0.0
         self.metrics_df = None
         self.sims = None
@@ -289,20 +294,17 @@ class Sprtrnd_Breakout():
                     opt_freq='custom')
 
         self.performance, self.results = wfo.walk_forward_optimization()
-        
-        
+        self.results['cstrategy'] = self.cum_strategy = (self.results['strategy'] * (1/4)).cumsum().apply(np.exp)
 
     def stress_test(self):
         """
-        Stress test the strategy using some of the following methods:
-        1. Monte Carlo Simulation
-        2. Parameter Stability Test
-        3. Hypothesis Testing
-        4. Crash Testing
-        
-        
-        
+        Perform a stress test on the strategy, uses block bootstrap to simulate different paths        
         """
-        pass
+        strategy = self.results['strategy']
+        stress_test = Stress_Test(strategy, self.num_simulations, self.confidence_level)
+        sims = stress_test.block_bootstrap(20)
+        self.metrics_df = stress_test.metrics_df_fnct(sims)
+        self.overall_score = stress_test.score_strategy(self.metrics_df)
+        self.sims = sims
     
         

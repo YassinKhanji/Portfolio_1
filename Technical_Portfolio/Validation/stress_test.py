@@ -40,11 +40,15 @@ class Returns_Metrics():
         return excess_returns.mean() / excess_returns.std() if excess_returns.std() != 0 else 0
     
     def var(self, confidence_level):
-        return np.quantile(self.prices, 1 - confidence_level)
+        simple_returns = np.diff(self.prices) / self.prices[:-1]
+        log_returns = np.log(simple_returns + 1)
+        return np.quantile(log_returns   , 1 - confidence_level)
     
     def cvar(self, confidence_level):
+        simple_returns = np.diff(self.prices) / self.prices[:-1]
+        log_returns = np.log(simple_returns + 1)
         var = np.quantile(self.prices, 1 - confidence_level)
-        return np.mean(self.prices[self.prices <= var])
+        return np.mean(log_returns[log_returns <= var])
     
     def confidence_interval_fnct(self, metric_series, confidence_level):
         lower_bound = np.percentile(metric_series, (1-confidence_level)/2 * 100)
@@ -87,8 +91,8 @@ class Stress_Test():
             resampled_cum = np.exp(resampled.cumsum())
             resampled_series.append(resampled_cum)
             resampled_df = pd.DataFrame(resampled_series).transpose()
-            for i in range(self.num_simulations):
-                plt.plot(resampled_df[i])
+        for i in range(self.num_simulations):
+            plt.plot(resampled_df[i])
         return resampled_df
     
     def metrics_df_fnct(self, sims_df):

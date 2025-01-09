@@ -255,6 +255,8 @@ class WFO():
 
    
     def test_strategy(self, test_data, best_params):
+        if isinstance(test_data, int):
+            test_data = self.data.iloc[-test_data:]
         result = self.trading_strategy(test_data.copy(), **best_params)
         peformance = self.objective_function(result)
         return peformance, result
