@@ -296,9 +296,9 @@ class Sprtrnd_Breakout():
         wfo = WFO(self.df, 
                     self.trading_strategy, 
                     self.param_space, 
-                    train_size=2000, 
-                    test_size=2000, 
-                    step_size=2000, 
+                    train_size=self.train_size, 
+                    test_size=self.test_size, 
+                    step_size=self.step_size, 
                     optimize_fn=self.optimize_fn, 
                     objective=self.objective, 
                     opt_freq=self.opt_freq)
