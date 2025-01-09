@@ -86,9 +86,10 @@ class Stress_Test():
             resampled = np.concatenate(sampled_blocks)[:len(self.returns)]
             resampled_cum = np.exp(resampled.cumsum())
             resampled_series.append(resampled_cum)
+            resampled_df = pd.DataFrame(resampled_series).transpose()
             for i in range(self.num_simulations):
-                plt.plot(simulated_cumulative_returns[i])
-        return pd.DataFrame(resampled_series).transpose()
+                plt.plot(resampled_df[i])
+        return resampled_df
     
     def metrics_df_fnct(self, sims_df):
         metrics_dict = {
