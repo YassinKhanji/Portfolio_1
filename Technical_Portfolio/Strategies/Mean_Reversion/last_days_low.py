@@ -30,7 +30,7 @@ from testing import WFO
 from Costs import Costs
 from stress_test import Stress_Test
 
-class Sprtrnd_Breakout():
+class Last_Days_Low():
     def __init__(self, df, optimize_fn="gp", 
                             objective='sharpe', 
                             opt_freq='custom', 
