@@ -5,22 +5,22 @@ from scipy import stats
 
 class Returns_Metrics():
     def __init__(self, prices):
-       self.prices = prices
+       self.cum_returns = prices
     
     # 2. Define the Performance Metric Functions
     def max_drawdown_fnct(self):
         """Calculate the maximum drawdown (peak to trough)."""
-        drawdowns = (self.prices / self.prices.cummax() - 1)
+        drawdowns = (self.cum_returns / self.cum_returns.cummax() - 1)
         return drawdowns.min()
 
     def average_drawdown(self):
         """Calculate the average drawdown (peak to trough)."""
-        drawdowns = (self.prices / self.prices.cummax() - 1)
+        drawdowns = (self.cum_returns / self.cum_returns.cummax() - 1)
         return drawdowns.mean()
 
     def average_drawdown_duration(self):
         """Calculate the average duration of drawdowns."""
-        drawdowns = (self.prices / self.prices.cummax() - 1)
+        drawdowns = (self.cum_returns / self.cum_returns.cummax() - 1)
         drawdown_durations = []
         drawdown_start = None
         for i in range(1, len(drawdowns)):
@@ -35,19 +35,19 @@ class Returns_Metrics():
 
     def sharpe_ratio_fnct(self, risk_free_rate=0):
         """Calculate the Sharpe ratio."""
-        returns = self.prices.pct_change().dropna()
+        returns = self.cum_returns.pct_change().dropna()
         excess_returns = returns - risk_free_rate
         return excess_returns.mean() / excess_returns.std() if excess_returns.std() != 0 else 0
     
     def var(self, confidence_level):
-        simple_returns = np.diff(self.prices) / self.prices[:-1]
+        simple_returns = np.diff(self.cum_returns) / self.cum_returns[:-1]
         log_returns = np.log(simple_returns + 1)
         return np.quantile(log_returns   , 1 - confidence_level)
     
     def cvar(self, confidence_level):
-        simple_returns = np.diff(self.prices) / self.prices[:-1]
+        simple_returns = np.diff(self.cum_returns) / self.cum_returns[:-1]
         log_returns = np.log(simple_returns + 1)
-        var = np.quantile(self.prices, 1 - confidence_level)
+        var = np.quantile(log_returns, 1 - confidence_level)
         return np.mean(log_returns[log_returns <= var])
     
     def confidence_interval_fnct(self, metric_series, confidence_level):
@@ -64,12 +64,14 @@ class Stress_Test():
         
     def normal_sims(self):
         mu, sigma = self.returns.mean(), self.returns.std()
-        normal_prices_df = pd.DataFrame()
+        simulations = []
         for i in range(self.num_simulations):
             sim_rets = np.random.normal(mu, sigma, 252)
             sim_prices = np.exp(sim_rets.cumsum())
-            normal_prices_df.iloc[:, i] = sim_prices
+            simulations.append(sim_prices)
             plt.plot(sim_prices)
+            
+        normal_prices_df = pd.DataFrame(simulations)
         return normal_prices_df
     
     def t_sims(self):

@@ -35,8 +35,11 @@ class Sprtrnd_Breakout():
                             objective='sharpe', 
                             opt_freq='custom', 
                             num_simulations = 1000,
-                            confidence_level = 0.95):
+                            confidence_level = 0.95, 
+                            blocks = 20, 
+                            max_universe = 4):
         self.df = df.copy()
+        self.max_universe = max_universe
         self.optimize_fn = optimize_fn
         self.objective = objective
         self.opt_freq = opt_freq
@@ -61,10 +64,12 @@ class Sprtrnd_Breakout():
         self.train_size = 2000
         self.test_size = 2000
         self.step_size = 2000
+        
         self.cum_strategy = None
         
         self.num_simulations = num_simulations
         self.confidence_level = confidence_level
+        self.blocks = blocks
         self.overall_score = 0.0
         self.metrics_df = None
         self.sims = None
@@ -74,7 +79,7 @@ class Sprtrnd_Breakout():
         
 
     
-
+    ######## Helper Methods ########
     def update_universe(self, df: pd.DataFrame, max_positions: int = 4, low_freq = '1d') -> pd.Series:
         """
         Updates a DataFrame to track a dynamic universe of coins.
@@ -163,8 +168,7 @@ class Sprtrnd_Breakout():
         fixed_sl = True,
         fixed_tp = True,
         maker = 0.25,
-        taker = 0.40,
-        max_universe = 4
+        taker = 0.40
         ):
     
         if params is not None:
@@ -246,7 +250,7 @@ class Sprtrnd_Breakout():
         df = fine.above_ema(df, ema_window)
 
         #apply update_univers
-        df['in_universe'], current_universe = self.update_universe(df, max_positions = max_universe)
+        df['in_universe'], current_universe = self.update_universe(df, max_positions = self.max_universe)
 
         df.dropna(inplace = True)
 
@@ -255,13 +259,15 @@ class Sprtrnd_Breakout():
         return df
 
 
-    
-    def optimize(self):
+
+
+    ######## Main Methods ########    
+    def optimize(self) -> pd.DataFrame:
         """
         Optimize the strategy using the Gaussian Process optimizer
 
         Returns:
-            optimized: The optimized results
+            optimized: The optimized results for the test period
         
         !!! Make Sure to Run the test method first to get the best parameters for the optimization !!!
 
@@ -289,22 +295,21 @@ class Sprtrnd_Breakout():
                     train_size=2000, 
                     test_size=2000, 
                     step_size=2000, 
-                    optimize_fn="gp", 
-                    objective='multiple', 
-                    opt_freq='custom')
+                    optimize_fn=self.optimize_fn, 
+                    objective=self.objective, 
+                    opt_freq=self.opt_freq)
 
         self.performance, self.results = wfo.walk_forward_optimization()
-        self.results['cstrategy'] = self.cum_strategy = (self.results['strategy'] * (1/4)).cumsum().apply(np.exp)
+        self.results['cstrategy'] = self.cum_strategy = (self.results['strategy'] * (1/self.max_universe)).cumsum().apply(np.exp)
 
-    def stress_test(self):
+    def stress_test(self) -> None:
         """
         Perform a stress test on the strategy, uses block bootstrap to simulate different paths        
         """
         strategy = self.results['strategy']
         stress_test = Stress_Test(strategy, self.num_simulations, self.confidence_level)
-        sims = stress_test.block_bootstrap(20)
+        self.sims = stress_test.block_bootstrap(self.blocks)
         self.metrics_df = stress_test.metrics_df_fnct(sims)
         self.overall_score = stress_test.score_strategy(self.metrics_df)
-        self.sims = sims
     
         
