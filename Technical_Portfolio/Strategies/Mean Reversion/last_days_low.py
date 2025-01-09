@@ -47,8 +47,8 @@ class Sprtrnd_Breakout():
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),
         'ema_window': Integer(5, 100),
-        'str_length': Integer(5, 50),
-        'str_mult': Integer(1, 5),
+        'hourly_lookback': Integer(1, 5),
+        'daily_lookback': Integer(1, 5),
         '_min_pos': Real(0, 1),
         '_max_pos': Real(1, 5),
         'sl_ind_length': Integer(5, 50),
@@ -273,13 +273,16 @@ class Sprtrnd_Breakout():
         !!! Make Sure to Run the test method first to get the best parameters for the optimization !!!
 
         """
-        wfo = WFO(self.df, 
-                self.trading_strategy)
+        wfo = WFO(self.df,
+                self.trading_strategy,
+                self.param_space)
         
-        self.best_params = wfo.optimize_parameter_gp(self.train_size, self.param_space)
-        optimized = wfo.test_strategy(self.test_size, self.best_params)
+        self.train_data = self.df.iloc[-self.train_size + self.test_size:]
+        self.test_data = self.df.iloc[-self.test_size:]
+        self.best_params = wfo.optimize_parameters_gp(self.train_data, self.param_space)
+        optimized_df = wfo.test_strategy(self.test_data, self.best_params)
 
-        return optimized
+        return optimized_df[1]
 
     
     def test(self) -> None:

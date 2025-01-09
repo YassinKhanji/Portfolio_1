@@ -231,6 +231,9 @@ class WFO():
 
         if isinstance(param_space, dict):
             param_space = self.dict_to_param_space(param_space)
+            
+        if isinstance(train_data, int):
+            train_data = self.data.iloc[-train_data * 2:]
 
         def objective(param_space):
             result = self.trading_strategy(train_data.copy(), params = param_space)
