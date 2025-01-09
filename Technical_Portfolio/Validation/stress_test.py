@@ -68,8 +68,7 @@ class Stress_Test():
         for i in range(self.num_simulations):
             sim_rets = np.random.normal(mu, sigma, 252)
             sim_prices = np.exp(sim_rets.cumsum())
-            normal_prices_df[i] = sim_prices
-            plt.axhline(initial_price, c = 'k')
+            normal_prices_df.iloc[:, i] = sim_prices
             plt.plot(sim_prices)
         return normal_prices_df
     
