@@ -21,6 +21,8 @@ The testing module performs rigorous evaluations, including in-sample optimizati
 
 These techniques can also be combined. For instance, walk-forward optimization could be applied to the entire dataset, while cross-validation could focus on testing the out-of-sample data.  
 
+In this module, position sizing strategies can also be integrated into the optimization process. For instance, an anti-martingale strategy can be employed, which adjusts allocations to optimize for performance trends that are contrary to those observed during the training period. This approach leverages the assumption that periods of underperformance may be followed by recovery, creating opportunities for better returns.
+
 ### Stress Testing  
 
 Understanding how a strategy performs under adverse conditions is crucial. While past performance is not indicative of future results, the risks associated with a strategy often are. Stress testing is a vital component, exposing vulnerabilities in individual strategies or the portfolio as a whole.  
