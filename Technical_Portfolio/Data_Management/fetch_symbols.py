@@ -19,7 +19,7 @@ def fetch_symbols(categories, processed_file='processed_categories.txt'):
 
                 if response.status_code == 200:
                     data = response.json()
-                    symbols = [coin['symbol'].upper() + 'USDT' for coin in data]
+                    symbols = [coin['symbol'].upper() + 'USD' for coin in data]
                     all_symbols.extend(symbols)
                     print(f"Fetching symbols for category '{category}' successful.")
                     
