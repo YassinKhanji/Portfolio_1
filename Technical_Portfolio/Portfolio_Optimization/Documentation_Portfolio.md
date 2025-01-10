@@ -33,3 +33,11 @@ The module monitors the exposure of individual assets or sectors, flagging insta
 
 ## Portfolio Risk Management
 
+- Some ways to deal with Strategy Drawdowns in portfolio management:
+	1. Moving Average X Price
+	2. Detection of High autocorrelation for negative returns
+	3. HMMs 
+	4. Max Drawdown Stop Loss
+
+Why perform the risk management on the overall portfolio, not on each strategy?
+
