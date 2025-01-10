@@ -11,6 +11,18 @@ class Portfolio_RM():
         self.returns = returns
     
     def drawdown_limit(self, threshold):
+        """_summary_
+
+        Args:
+            threshold (_type_): _description_
+
+        Returns:
+            _type_: _description_
+            
+        Note: We haven't taken into account transaction costs, slippage, taxes, etc. so the results may not be accurate.
+        """
+        
+        
         # Step 1: Calculate the cumulative returns
         creturns = self.returns.cumsum().apply(np.exp)
         
