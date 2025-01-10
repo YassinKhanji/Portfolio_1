@@ -76,15 +76,15 @@ class Data:
 
     def prepare_data(self, df):
         """Prepare data for analysis."""
-        df = df.copy()
+        _df = df.copy()
         for coin in df.columns.levels[1]:
-            df['returns', coin] = df['close', coin].pct_change()
-            df['log_return', coin] = np.log(df['returns', coin] + 1)
-            df["creturns", coin] = df["log_return", coin].cumsum().apply(np.exp)
-            df['price', coin] = df['close', coin]
-            df['volume_in_dollars', coin] = df['close', coin] * df['volume', coin]
+            _df['returns', coin] = _df['close', coin].pct_change()
+            _df['log_return', coin] = np.log(_df['returns', coin] + 1)
+            _df["creturns", coin] = _df["log_return", coin].cumsum().apply(np.exp)
+            _df['price', coin] = _df['close', coin]
+            _df['volume_in_dollars', coin] = _df['close', coin] * _df['volume', coin]
 
-        df = df.stack(future_stack=True)
+        df = _df.stack(future_stack=True)
         df.sort_index(axis=1, inplace=True)
         df.index.names = ['date', 'coin']
         df.dropna(inplace=True)
@@ -185,12 +185,14 @@ class CSV_Data:
 
 
 # Example usage
-# symbols = ['BTCUSDT', 'ETHUSDT']
+# symbols = ['BTCUSD', 'ETHUSD']
 symbols = get_symbols()
+# Add the symbol to each string in the list
+updated_symbols = [s + 'T' for s in symbols]
 interval = '1h'
 start_time = dt.datetime(2020, 1, 1)
 end_time = dt.datetime(2020, 1, 7)
-df = Data(symbols, interval, start_time, end_time).df
+df = Data(updated_symbols, interval, start_time, end_time).df
 print(df)
 
 
@@ -199,4 +201,3 @@ print(df)
 # binance_symbols = Data(symbols)
 # folder_path = r'C:\Users\yassi\OneDrive\Documents\Trading\Algo Trading Projects\Algo Business\data\Binance Data (CSV)'
 # df = CSV_Data(folder_path, symbols).df
-
