@@ -24,10 +24,10 @@ from coarse import Coarse_1 as Coarse
 from fine import Fine_1 as Fine
 from entry_signal import Trend_Following, Mean_Reversion
 from tail_risk import Stop_Loss, Take_Profit
-from position_size import Position
+from position import Position
 from manage_trade import Manage_Trade
 from testing import WFO
-from Costs import Costs
+from costs import Costs
 from stress_test import Stress_Test
 
 class Last_Days_Low():
@@ -49,8 +49,8 @@ class Last_Days_Low():
         'ema_window': Integer(5, 100),
         'hourly_lookback': Integer(1, 5),
         'daily_lookback': Integer(1, 5),
-        '_min_pos': Real(0, 1),
-        '_max_pos': Real(1, 5),
+        '_min_pos': Real(0, 0.75),
+        '_max_pos': Real(0, 1),
         'sl_ind_length': Integer(5, 50),
         'sl_ind_mult': Real(0.5, 5),
         'tp_mult': Integer(2, 7),

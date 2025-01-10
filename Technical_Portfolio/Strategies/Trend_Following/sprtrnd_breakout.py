@@ -24,10 +24,10 @@ from coarse import Coarse_1 as Coarse
 from fine import Fine_1 as Fine
 from entry_signal import Trend_Following, Mean_Reversion
 from tail_risk import Stop_Loss, Take_Profit
-from position_size import Position
+from position import Position
 from manage_trade import Manage_Trade
 from testing import WFO
-from Costs import Costs
+from costs import Costs
 from stress_test import Stress_Test
 
 class Sprtrnd_Breakout():
@@ -49,8 +49,8 @@ class Sprtrnd_Breakout():
         'ema_window': Integer(5, 100),
         'str_length': Integer(5, 50),
         'str_mult': Integer(1, 5),
-        '_min_pos': Real(0, 1),
-        '_max_pos': Real(1, 5),
+        '_min_pos': Real(0, 0.75),
+        '_max_pos': Real(0, 1),
         'sl_ind_length': Integer(5, 50),
         'sl_ind_mult': Real(0.5, 5),
         'tp_mult': Integer(2, 7),
@@ -138,7 +138,9 @@ class Sprtrnd_Breakout():
         df = df.unstack()
         df['in_universe'] = df['in_universe'].shift(periods = 1, freq = low_freq)
         df = df.stack(future_stack= True)
-        return df['in_universe'], current_universe
+        
+        self.current_universe = current_universe
+        return df['in_universe'], self.current_universe
 
     def trading_strategy(self,
         data,
