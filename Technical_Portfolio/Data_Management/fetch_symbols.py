@@ -2,7 +2,9 @@ import requests
 import time
 import os
 import sys
-sys.stdout.reconfigure(encoding='utf-8')
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 def fetch_symbols(categories, processed_file='processed_categories.txt'):
     all_symbols = []

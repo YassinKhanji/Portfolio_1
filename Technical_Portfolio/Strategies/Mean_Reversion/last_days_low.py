@@ -37,12 +37,14 @@ class Last_Days_Low():
                             num_simulations = 1000,
                             confidence_level = 0.95, 
                             blocks = 20,
-                            max_universe = 4):
+                            max_universe = 4,
+                            live = False):
         self.df = df.copy()
         self.max_universe = max_universe
         self.optimize_fn = optimize_fn
         self.objective = objective
         self.opt_freq = opt_freq
+        self.live = live
         self.param_space = {
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),
@@ -215,8 +217,9 @@ class Last_Days_Low():
         #Generate a signal
         _df = mr.last_days_low(data.copy(), hourly_lookback, daily_lookback)
 
-        pos = Position(_df, _min_pos, _max_pos)
+        pos = Position(_df, _min_pos, _max_pos, self.live)
         _df = pos.initialize_position()
+        _df = pos.calculate_position(_df)
         sl = Stop_Loss(_df, sl_type, sl_ind_length, sl_ind_mult, sl_signal_only)
         _df = sl.apply_stop_loss(fixed_sl, plot = False)
         tp = Take_Profit(_df, tp_type, tp_mult, tp_signal_only)

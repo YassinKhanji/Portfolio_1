@@ -25,7 +25,7 @@ from entry_signal import Trend_Following, Mean_Reversion
 from tail_risk import Stop_Loss, Take_Profit
 
 class Position():
-    def __init__(self, df, _min = 0, _max = np.inf):
+    def __init__(self, df, _min = 0, _max = np.inf, live = False):
         """
         parametes:
             df: Stacked dataframe
@@ -36,7 +36,8 @@ class Position():
         """
         self.df = df.copy()     
         self._min = _min
-        self._max = _max       
+        self._max = _max 
+        self.live = live      
             
 
     def custom_positon(self, series):
@@ -93,8 +94,9 @@ class Position():
 
                 elif df.loc[df.index[i-1], ('position', coin)] > 0 if i > 0 else False:
                     df.loc[df.index[i], ('position', coin)] = df.loc[df.index[i-1], ('position', coin)]
-
-            df.loc[:, ('position', coin)] = df.loc[:, ('position', coin)].shift(1)
+                    
+            if not self.live:
+                df.loc[:, ('position', coin)] = df.loc[:, ('position', coin)].shift(1)
             df.loc[:, ('position', coin)] = np.clip(df.loc[:, ('position', coin)], a_min = self._min, a_max = self._max)
         
         self.df = df.stack(future_stack=True)
@@ -108,7 +110,8 @@ class Position():
         _df = self.df.unstack()
         for coin in _df.columns.get_level_values(1):
             _df[f'position', coin ] =  _df['entry_signal', coin].cumsum().shift(1).fillna(0)
-
+            if not self.live:
+                _df[f'position', coin ] = _df[f'position', coin ].shift(1).fillna(0)
         _df = _df.stack(future_stack=True)
         #Perform some calculations
         cal = Calculations()

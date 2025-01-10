@@ -185,10 +185,11 @@ class CSV_Data:
 
 
 # Example usage
-symbols = ['BTCUSDT', 'ETHUSDT']
+# symbols = ['BTCUSDT', 'ETHUSDT']
+symbols = get_symbols()
 interval = '1h'
 start_time = dt.datetime(2020, 1, 1)
-end_time = dt.datetime(2020, 3, 1)
+end_time = dt.datetime(2020, 1, 7)
 df = Data(symbols, interval, start_time, end_time).df
 print(df)
 
