@@ -3,8 +3,8 @@ import pandas as pd
 from scipy.optimize import minimize
 import quantstats_lumi as qs
 
-class Portfolio_Optimization():
-    def __init__(self, strategies, 
+class WFO():
+    def __init__(self, log_rets, 
                  train_size = 1000, 
                  test_size = 1000, 
                  step_size = 1000, 
@@ -24,7 +24,7 @@ class Portfolio_Optimization():
         objective (str): The objective function to maximize ("sharpe", "sortino", "calmar", "multiple").
         opt_period (str): The period to optimize over ['custom', 'daily', 'weekly', 'quarterly', 'semi-annually', 'yearly'].
         """
-        self.strategies = strategies
+        self.log_rets = log_rets
         if opt_freq == 'custom':
             self.train_size = train_size
         else:
@@ -34,7 +34,7 @@ class Portfolio_Optimization():
         self.objective = objective
         
         
-        if step_size + train_size + test_size > len(strategies):
+        if step_size + train_size + test_size > len(data):
             raise ValueError("Invalid train, test, or step size.")
         elif train_size < 1 or test_size < 1 or step_size < 1:
             raise ValueError("Train, test, and step size must be greater than 0.")
@@ -123,8 +123,8 @@ class Portfolio_Optimization():
         """
         Optimize the weights of a trading strategy using Bayesian optimization.
         """
-        equal_weights = np.array([1 / len(self.strategies.columns)] * len(self.strategies.columns))
-        bounds = self.bounds(len(self.strategies.columns))
+        equal_weights = np.array([1 / len(self.log_rets.columns)] * len(self.log_rets.columns))
+        bounds = self.bounds(len(self.log_rets.columns))
         
         sum_constraint = ({'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1})
         starting_guess = equal_weights
@@ -153,7 +153,7 @@ class Portfolio_Optimization():
         """
         all_performance = []
         all_results = []
-        for train, test in self.split_data(self.strategies, self.train_size, self.test_size, self.step_size):
+        for train, test in self.split_data(self.log_rets, self.train_size, self.test_size, self.step_size):
             # Optimize on training data    
             weights = self.optimize_weights_minimize(train)
             

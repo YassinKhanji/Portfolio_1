@@ -71,7 +71,7 @@ class Position():
             Pandas DataFrame with added 'Position' (float) and 'Session' (int) columns.
             Returns original dataframe if entry_signal and exit_signals columns are not found.
         """
-        if 'entry_signal' not in df.columns.get_level_values(1) or 'exit_signal' not in df.columns.get_level_values(1):
+        if 'entry_signal' not in df.columns or 'exit_signal' not in df.columns:
             raise ValueError("Error: DataFrame must contain 'entry_signal' and 'exit_signal' columns.")
         
         df = df.unstack()
