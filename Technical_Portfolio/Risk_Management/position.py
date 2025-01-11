@@ -72,6 +72,7 @@ class Position():
             Returns original dataframe if entry_signal and exit_signals columns are not found.
         """
         if 'entry_signal' not in df.columns or 'exit_signal' not in df.columns:
+            print(df.columns)
             raise ValueError("Error: DataFrame must contain 'entry_signal' and 'exit_signal' columns.")
         
         df = df.unstack()
