@@ -65,18 +65,20 @@ class Position():
         Note that entry signals have a lower bound of 0 (without higher bound theoritacally), and exit signals have a range between 0 and 1
 
         Args:
-            df: Pandas DataFrame with 'entry_signal' (0-1) and 'exit_signal' (boolean) columns.
+            df: Pandas DataFrame with 'entry_signal' (0-1) and 'exit_signal' (0, 1).
 
         Returns:
             Pandas DataFrame with added 'Position' (float) and 'Session' (int) columns.
             Returns original dataframe if entry_signal and exit_signals columns are not found.
         """
+        if 'entry_signal' not in df.columns.get_level_values(1) or 'exit_signal' not in df.columns.get_level_values(1):
+            raise ValueError("Error: DataFrame must contain 'entry_signal' and 'exit_signal' columns.")
+        
         df = df.unstack()
+        
         if self._min < 0:
             raise ValueError("We can't take short positions, _min should be at least 0")
         
-        if 'entry_signal' not in df.columns.get_level_values(1) or 'exit_signal' not in df.columns.get_level_values(1):
-            raise ValueError("Error: DataFrame must contain 'entry_signal' and 'exit_signal' columns.")
             
         for coin in df.columns.get_level_values(1).unique():
             df.loc[:, ('position', coin)] = 0.0
