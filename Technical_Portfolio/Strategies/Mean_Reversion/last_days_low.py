@@ -266,7 +266,7 @@ class Last_Days_Low():
 
 
     ######## Main Methods ########    
-    def optimize(self) -> pd.DataFrame:
+    def optimize(self, test = False) -> pd.DataFrame:
         """
         Optimize the strategy using the Gaussian Process optimizer
 
@@ -283,7 +283,9 @@ class Last_Days_Low():
         self.train_data = self.df.iloc[-self.train_size + self.test_size:]
         self.test_data = self.df.iloc[-self.test_size:]
         self.best_params = wfo.optimize_parameters_gp(self.train_data, self.param_space)
-        optimized_df = wfo.test_strategy(self.test_data, self.best_params)
+        
+        if test:
+            optimized_df = wfo.test_strategy(self.test_data, self.best_params)
 
         return optimized_df[1]
 

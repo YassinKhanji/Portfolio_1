@@ -75,7 +75,7 @@ class Position():
         if self._min < 0:
             raise ValueError("We can't take short positions, _min should be at least 0")
         
-        if 'entry_signal' not in df.columns or 'exit_signal' not in df.columns:
+        if 'entry_signal' not in df.columns.get_level_values(1) or 'exit_signal' not in df.columns.get_level_values(1):
             raise ValueError("Error: DataFrame must contain 'entry_signal' and 'exit_signal' columns.")
             
         for coin in df.columns.get_level_values(1).unique():
