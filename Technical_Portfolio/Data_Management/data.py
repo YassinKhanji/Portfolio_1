@@ -9,19 +9,31 @@ from fetch_symbols import get_symbols
 
 
 class Data:
-    def __init__(self, symbols, interval, start_time, end_time):
+    def __init__(self, symbols, interval = '1h', start_time = dt.datetime(2020, 1, 1), end_time = dt.datetime(2020, 1, 2), get_data = True,
+                 exchange = 'binance'):
         self.symbols = symbols
         self.interval = interval
         self.start_time = start_time
         self.end_time = end_time
-        self.available_symbols = self.binance_symbols()
-        self.df = self.get_data()
+        if exchange == 'binance':
+            self.available_symbols = self.binance_symbols()
+        if exchange == 'kraken':
+            self.available_symbols = self.kraken_symbols()
+        if get_data:
+            self.df = self.get_data()
 
     def binance_symbols(self):
         """Fetch available symbols from Binance API."""
         response = requests.get("https://api.binance.com/api/v3/exchangeInfo")
         exchange_info = response.json()
         valid_symbols = {s['symbol'] for s in exchange_info['symbols']}
+        return [s for s in self.symbols if s in valid_symbols]
+    
+    def kraken_symbols(self):
+        """Fetch available symbols from Kraken API."""
+        response = requests.get("https://api.kraken.com/0/public/AssetPairs")
+        kraken_info = response.json()
+        valid_symbols = {pair for pair in kraken_info['result']}
         return [s for s in self.symbols if s in valid_symbols]
 
     def fetch_symbol_data(self, symbol, date_list, url, limit):
