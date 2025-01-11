@@ -57,6 +57,9 @@ class Data:
         """Fetch historical kline data for all symbols in parallel."""
         url = "https://api.binance.com/api/v3/klines"
         date_list = pd.date_range(start=self.start_time, end=self.end_time, freq='D').tolist()
+        
+        if self.available_symbols[0].endswith('T'):
+            self.available_symbols = [s[:-1] for s in self.available_symbols]
 
         # Use ThreadPoolExecutor for parallel fetching
         with ThreadPoolExecutor(max_workers=10) as executor:
