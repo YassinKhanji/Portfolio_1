@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.optimize import minimize
 import quantstats_lumi as qs
 
-class WFO():
+class Portfolio_Optimization():
     def __init__(self, log_rets, 
                  train_size = 1000, 
                  test_size = 1000, 

@@ -112,7 +112,7 @@ class Position():
         """
         _df = self.df.unstack()
         for coin in _df.columns.get_level_values(1):
-            _df[f'position', coin ] =  _df['entry_signal', coin].cumsum().shift(1).fillna(0)
+            _df[f'position', coin ] =  _df['entry_signal', coin].cumsum()
             if not self.live:
                 _df[f'position', coin ] = _df[f'position', coin ].shift(1).fillna(0)
         _df = _df.stack(future_stack=True)
