@@ -18,8 +18,9 @@ class Data:
         self.end_time = end_time
         if exchange == 'binance':
             self.available_symbols = self.binance_symbols()
-        if exchange == 'kraken':
+        elif exchange == 'kraken':
             self.available_symbols = self.kraken_symbols()
+            
         if get_data:
             self.df = self.get_data()
 
@@ -61,9 +62,10 @@ class Data:
         url = "https://api.binance.com/api/v3/klines"
         date_list = pd.date_range(start=self.start_time, end=self.end_time, freq='D').tolist()
         
-        if self.available_symbols[0].endswith('T'):
-            self.available_symbols = [s[:-1] for s in self.available_symbols]
+        if not self.available_symbols[0].endswith('T'):
+            self.available_symbols = [s + 'T' for s in self.available_symbols]
 
+        print(self.available_symbols)
         # Use ThreadPoolExecutor for parallel fetching
         with ThreadPoolExecutor(max_workers=10) as executor:
             results = executor.map(
@@ -71,6 +73,7 @@ class Data:
                 self.available_symbols,
             )
 
+        print(results)
         # Process and combine results
         data_frames = {}
         for symbol, data in results:
