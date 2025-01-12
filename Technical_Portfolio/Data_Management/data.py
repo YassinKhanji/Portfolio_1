@@ -6,6 +6,7 @@ import datetime as dt
 import os
 from functools import reduce
 from fetch_symbols import get_symbols
+import ccxt
 
 
 class Data:
@@ -31,10 +32,12 @@ class Data:
     
     def kraken_symbols(self):
         """Fetch available symbols from Kraken API."""
-        response = requests.get("https://api.kraken.com/0/public/AssetPairs")
-        kraken_info = response.json()
-        valid_symbols = {pair for pair in kraken_info['result']}
-        return [s for s in self.symbols if s in valid_symbols]
+        exchange = ccxt.kraken()
+        markets = exchange.load_markets()
+        valid_symbols_ = {market['symbol'] for market in markets.values()}
+        valid_symbols_ = [s.replace("/USD", "USD") for s in valid_symbols_ if s.endswith('USD')]
+        valid_symbols_.sort()
+        return [s for s in self.symbols if s in valid_symbols_]
 
     def fetch_symbol_data(self, symbol, date_list, url, limit):
         """Fetch kline data for a single symbol."""
@@ -201,14 +204,14 @@ class CSV_Data:
 
 # Example usage
 # symbols = ['BTCUSD', 'ETHUSD']
-symbols = get_symbols()
-# Add the symbol to each string in the list
-updated_symbols = [s + 'T' for s in symbols]
-interval = '1h'
-start_time = dt.datetime(2020, 1, 1)
-end_time = dt.datetime(2020, 1, 7)
-df = Data(updated_symbols, interval, start_time, end_time).df
-print(df)
+# symbols = get_symbols()
+# # Add the symbol to each string in the list
+# updated_symbols = [s + 'T' for s in symbols]
+# interval = '1h'
+# start_time = dt.datetime(2020, 1, 1)
+# end_time = dt.datetime(2020, 1, 7)
+# df = Data(updated_symbols, interval, start_time, end_time).df
+# print(df)
 
 
 #Use the below for uploading full data (uploaded to csv)

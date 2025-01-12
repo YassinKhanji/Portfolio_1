@@ -120,11 +120,11 @@ def get_symbols():
 
 
 
-# Fetch symbols and send to server
-fetched_symbols = fetch_symbols(all_categories)
-symbols = get_symbols()
-print(symbols)
-upload_symbols(fetched_symbols)
-# send_to_server(symbols)
+# # Fetch symbols and send to server
+# fetched_symbols = fetch_symbols(all_categories)
+# symbols = get_symbols()
+# print(symbols)
+# upload_symbols(fetched_symbols)
+# # send_to_server(symbols)
 
 
