@@ -155,6 +155,10 @@ class WFO():
 
         if strategy.sum() == 0:
             return 0
+        
+        if len(result) == 0 or result is None:
+            print('No result:' + result)
+            return 0
 
         try:
             if self.objective == "multiple":

@@ -32,5 +32,6 @@ class Fine_1():
         for coin in df.columns.get_level_values(1).unique():
             df[f'ema_{ema_window}', coin] = ta.ema(df['close', coin], length=ema_window)
         df = df.stack(future_stack = True)
+        df[f'ema_{ema_window}'] = df[f'ema_{ema_window}'].fillna(method='ffill')  # Forward fill to handle NaN values
         df['above_ema'] = (df['close'] > df[f'ema_{ema_window}']).astype(int)
         return df

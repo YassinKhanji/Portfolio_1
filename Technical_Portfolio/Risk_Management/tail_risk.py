@@ -204,7 +204,7 @@ class Stop_Loss():
             raise ValueError('Dynamic stop loss does not currently support the ATR indicator, use Fixed Stop Loss')
             
         elif self.sl_type.lower() == 'supertrend':
-            _df = _df.unstack()
+            _df = _df.unstack().copy()
             if not any('SUPERT'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the supertrend indicator
                 _df = Trend_Following().supertrend_signals(_df, self.sl_ind_length, self.sl_mult) #it contains supertrend values as well as signals
@@ -224,7 +224,7 @@ class Stop_Loss():
             _df['stop_loss'] = _df['close'] - self.sl_dollar
 
 
-        _df = _df.unstack()
+        _df = _df.unstack().copy()
         for coin in _df.columns.levels[1]:
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform(lambda x: x)
             # Group by both the session and coin, then pass the coin as an additional argument
