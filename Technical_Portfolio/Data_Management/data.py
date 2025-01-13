@@ -62,7 +62,7 @@ class Data:
     def get_binance_klines(self, limit=1000):
         """Fetch historical kline data for all symbols in parallel."""
         url = "https://api.binance.com/api/v3/klines"
-        date_list = pd.date_range(start=self.start_time, end=self.end_time, freq='h').tolist()
+        date_list = pd.date_range(start=self.start_time, end=self.end_time, freq='D').tolist()
         
         if not self.available_symbols[0].endswith('T'):
             self.available_symbols = [s + 'T' for s in self.available_symbols]
