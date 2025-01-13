@@ -64,9 +64,9 @@ class Last_Days_Low():
         
         self.performance = -np.inf
         self.results = None
-        self.train_size = 2000
-        self.test_size = 2000
-        self.step_size = 2000
+        self.train_size = 2200
+        self.test_size = 2200
+        self.step_size = 2200
         
         self.best_params = None
         self.cum_strategy = None

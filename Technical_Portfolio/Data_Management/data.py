@@ -65,7 +65,7 @@ class Data:
         if not self.available_symbols[0].endswith('T'):
             self.available_symbols = [s + 'T' for s in self.available_symbols]
 
-        print(self.available_symbols)
+        
         # Use ThreadPoolExecutor for parallel fetching
         with ThreadPoolExecutor(max_workers=10) as executor:
             results = executor.map(
@@ -73,7 +73,7 @@ class Data:
                 self.available_symbols,
             )
 
-        print(results)
+        
         # Process and combine results
         data_frames = {}
         for symbol, data in results:
@@ -200,6 +200,11 @@ class CSV_Data:
         # Upload the data to CSV file
         df.to_csv('all_data.csv')
     
+    
+def get_halal_symbols():
+    """Get the halal symbols from the file."""
+    halal_symbols = []
+    return halal_symbols
 
     
 

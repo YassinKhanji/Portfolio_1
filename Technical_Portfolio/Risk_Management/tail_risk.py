@@ -431,7 +431,7 @@ class Take_Profit():
             _df['take_profit'] = _df['close'] + self.tp_dollar
 
         #Apply the session take profit
-        _df = _df.unstack()
+        _df = _df.unstack().copy()
         for coin in _df.columns.get_level_values(1):
             _df['session_take_profit', coin] = _df['take_profit', coin].groupby(_df['session', coin]).cummin()
 

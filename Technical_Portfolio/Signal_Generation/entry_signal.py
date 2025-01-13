@@ -130,7 +130,7 @@ class Mean_Reversion():
                 (df[('close', coin)].shift(hourly_lookback + 1) > df[('shifted_htf_low', coin)])
             )
         
-        df = df.stack(future_stack=True)
+        df = df.stack(future_stack=True).copy()
 
         # Create the entry_signal column
         df['entry_signal'] = (

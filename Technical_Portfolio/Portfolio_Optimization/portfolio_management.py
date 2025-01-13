@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 
 
 class Portfolio_Management():
-    def __init__(self, strategy_map):
-        self.strategy_map = strategy_map   
+    def __init__(self, strategy_rets_map):
+        self.strategy_rets_map = strategy_rets_map   
         
-    def get_filtered_strategies(self, selected, strategy_map):
+    def get_filtered_strategies(self, selected, strategy_rets_map):
         """Filters the strategies based on the selected strategies."""
-        filtered_strategies = {strategy_name : strategy for strategy_name, strategy in strategy_map.items() if strategy_name in selected}
+        filtered_strategies = {strategy_name : strategy for strategy_name, strategy in strategy_rets_map.items() if strategy_name in selected}
         return pd.concat(filtered_strategies, axis = 1)
     
     def filter_by_correlation(self, low_corr_threshold = 0.9):
@@ -21,7 +21,7 @@ class Portfolio_Management():
         Filter the strategies by correlation
         """
         #Concatenate the map, to get one dataframe
-        all_strategy = pd.concat(self.strategy_map, axis = 1)
+        all_strategy = pd.concat(self.strategy_rets_map, axis = 1)
     
         #Calculate the correlation matrix  
         corr_matrix = all_strategy.corr()
@@ -39,6 +39,6 @@ class Portfolio_Management():
         
         
         #Get a new list for the selected strategies
-        filtered_strategies = self.get_filtered_strategies(selected_strategies, self.strategy_map)
+        filtered_strategies = self.get_filtered_strategies(selected_strategies, self.strategy_rets_map)
         
         return filtered_strategies

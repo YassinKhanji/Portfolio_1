@@ -34,7 +34,7 @@ class Portfolio_Optimization():
         self.objective = objective
         
         
-        if step_size + train_size + test_size > len(data):
+        if step_size + train_size + test_size > len(log_rets):
             raise ValueError("Invalid train, test, or step size.")
         elif train_size < 1 or test_size < 1 or step_size < 1:
             raise ValueError("Train, test, and step size must be greater than 0.")
