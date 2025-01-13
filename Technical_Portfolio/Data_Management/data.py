@@ -17,6 +17,8 @@ class Data:
         self.start_time = start_time
         self.end_time = end_time
         if exchange == 'binance':
+            if not self.available_symbols[0].endswith('T'):
+                self.symbols = [s + 'T' for s in self.symbols]
             self.available_symbols = self.binance_symbols()
         elif exchange == 'kraken':
             self.available_symbols = self.kraken_symbols()
