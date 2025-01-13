@@ -168,9 +168,10 @@ class Stop_Loss():
 
         #Unstack the dataframe
         _df = _df.unstack()
-
+        # _df = _df.fillna(0)
         #Calculate the session stop loss
         for coin in _df.columns.levels[1]:
+            print(_df['stop_loss', coin])
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform('first')
             # Group by both the session and coin, then pass the coin as an additional argument
             if self.signal_only:
