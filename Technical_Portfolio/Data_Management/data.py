@@ -42,7 +42,7 @@ class Data:
         valid_symbols_.sort()
         return [s for s in self.symbols if s in valid_symbols_]
 
-    def fetch_symbol_data(self, symbol, date_list, url, limit):
+    def fetch_symbol_binance_data(self, symbol, date_list, url, limit):
         """Fetch kline data for a single symbol."""
         all_data = []
         for i in range(len(date_list) - 1):
@@ -55,7 +55,7 @@ class Data:
             }
             response = requests.get(url, params=params)
             data = response.json()
-            if isinstance(data, list):
+            if isinstance(data, list) and data:
                 all_data.extend(data)
         return symbol, all_data
 
@@ -71,7 +71,7 @@ class Data:
         # Use ThreadPoolExecutor for parallel fetching
         with ThreadPoolExecutor(max_workers=10) as executor:
             results = executor.map(
-                lambda symbol: self.fetch_symbol_data(symbol, date_list, url, limit),
+                lambda symbol: self.fetch_symbol_binance_data(symbol, date_list, url, limit),
                 self.available_symbols,
             )
 
