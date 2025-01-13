@@ -105,7 +105,7 @@ class Data:
             _df['price', coin] = _df['close', coin]
             _df['volume_in_dollars', coin] = _df['close', coin] * _df['volume', coin]
 
-        df = _df.stack(future_stack=True)
+        df = _df.stack(future_stack=True).copy()
         df.sort_index(axis=1, inplace=True)
         df.index.names = ['date', 'coin']
         df.dropna(inplace=True)

@@ -118,7 +118,7 @@ class Mean_Reversion():
         df['same_date'] = _df['same_date']  # Use assignment directly instead of .loc to ensure clarity
 
         # Unstack safely
-        df = df.unstack()
+        df = df.unstack().copy()
 
         # Direction column
         for coin in df.columns.get_level_values(1).unique():
