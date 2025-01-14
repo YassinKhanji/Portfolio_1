@@ -87,8 +87,8 @@ class Stress_Test():
     def block_bootstrap(self, block_size):
         resampled_series = []
         for _ in range(self.num_simulations):
-            blocks = [self.returns[i:i + block_size] for i in range(len(self.returns_length) - block_size + 1)]
-            sampled_blocks = [blocks[np.random.randint(0, len(blocks))] for _ in range(len(self.returns_length) // block_size + 1)]
+            blocks = [self.returns[i:i + block_size] for i in range(self.returns_length - block_size + 1)]
+            sampled_blocks = [blocks[np.random.randint(0, len(blocks))] for _ in range(self.returns_length // block_size + 1)]
             resampled = np.concatenate(sampled_blocks)[:len(self.returns)]
             resampled_cum = np.exp(resampled.cumsum())
             resampled_series.append(resampled_cum)
