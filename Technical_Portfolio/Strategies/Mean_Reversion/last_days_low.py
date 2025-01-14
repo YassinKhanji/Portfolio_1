@@ -217,49 +217,63 @@ class Last_Days_Low():
         #Generate a signal
         print(f'length of data: {len(data)}')
         _df = mr.last_days_low(data.copy(), hourly_lookback, daily_lookback)
+        print('Signal Generated')
 
         pos = Position(_df, _min_pos, _max_pos, self.live)
         _df = pos.initialize_position()
+        print('Position Initialized')
         sl = Stop_Loss(_df, sl_type, sl_ind_length, sl_ind_mult, sl_signal_only)
         _df = sl.apply_stop_loss(fixed_sl, plot = False)
+        print('Stop Loss Applied')
         tp = Take_Profit(_df, tp_type, tp_mult, tp_signal_only)
         _df = tp.apply_take_profit(fixed_tp, plot = False)
+        print('Take Profit Applied')
         ptp = Take_Profit(_df, tp_type, ptp_mult, ptp_signal_only, exit_percent = ptp_exit_percent)
         _df = ptp.apply_take_profit(fixed_tp, plot = False)
+        print('Partial Take Profit Applied')
 
         _df = cal.merge_cols(_df, common = 'exit_signal', use_clip = True)
         _df = pos.calculate_position(_df)
+        print('Position Calculated')
 
         mt = Manage_Trade(_df)
         _df = mt.erw_actual_allocation(max_perc_risk, max_dollar_allocation)
+        print('Manage Trade Applied')
         
         _df = cal.update_all(_df)
+        print('All Updated')
 
         #########################
         
         #Calculate transaction costs on strategy returns
         costs = Costs(_df, maker = maker, taker = taker)
         df = costs.apply_fees() #Applies fees on strategy returns, appears on cumulative returns when applied 
+        print('Costs Applied')
 
         #########################
         
         #Downsample the data
         df = cal.downsample(df, low_freq)
+        print('Data Downsampled')
 
         #Perform coarse analysis and filtering
         coarse = Coarse()
         df = coarse.volume_flag(df, max_dollar_allocation)
         df = coarse.sort_by_volume(df)
         df = coarse.sort_by_std(df, std_window, mean_window)
+        print('Coarse Analysis Done')
         fine = Fine()
         df = fine.above_ema(df, ema_window)
+        print('Fine Analysis Done')
 
         #apply update_univers
         df['in_universe'], self.current_universe = self.update_universe(df, max_positions = self.max_universe)
+        print('Universe Updated')
 
         df.dropna(inplace = True)
 
         df = df[df['in_universe']]
+        print('In Universe')
         
         return df
 
