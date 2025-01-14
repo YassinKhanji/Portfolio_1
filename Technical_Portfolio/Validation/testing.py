@@ -143,7 +143,6 @@ class WFO():
             start += step_size
 
 
-
     def objective_function(self, result):
         """
         Calculate the objective function for the optimization.
