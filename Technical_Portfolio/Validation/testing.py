@@ -186,6 +186,8 @@ class WFO():
             # Print the training and testing set ranges
             print(f'Training set: {train.index[0]} - {train.index[-1]}')
             print(f'Testing set: {test.index[0]} - {test.index[-1]}')
+            
+            yield train, test
 
             # Move the training window start time by step_duration
             start_time += pd.to_timedelta(step_duration)
