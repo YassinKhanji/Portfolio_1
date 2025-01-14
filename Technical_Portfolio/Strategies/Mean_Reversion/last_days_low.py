@@ -41,7 +41,7 @@ class Last_Days_Low():
                             live = False,
                             train_size = 2200,
                             test_size = 2200,
-                            step_size = 2200,):
+                            step_size = 2200):
         self.df = df.copy()
         self.max_universe = max_universe
         self.optimize_fn = optimize_fn
