@@ -235,7 +235,7 @@ class WFO():
             result = self.trading_strategy(train_data.copy(), params = param_space)
             # Use negative performance because gp_minimize minimizes
             objective = self.objective_function(result) 
-            print(objective)
+            print(f'In-sample performance: {objective}')
             return -objective if not pd.isnull(objective) else 1e10  # Handle invalid values
 
         # Run gp_minimize
@@ -247,9 +247,9 @@ class WFO():
         )
         
         # Extract the best parameters
+        print(f'Best Params: {result.x}')
         best_params = {dim.name: val for dim, val in zip(param_space, result.x)}
-        print(best_params)
-        print(result.x)
+        print(f'Best Params Dictionary Created: {best_params}')
         return best_params
 
    
