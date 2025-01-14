@@ -304,8 +304,7 @@ class Last_Days_Low():
         if test:
             self.test_data = self.df.iloc[-self.test_size:]
             optimized_df = wfo.test_strategy(self.test_data, self.best_params)
-
-        return optimized_df[1]
+            return optimized_df[1]
     
     def test(self) -> None:
         """
