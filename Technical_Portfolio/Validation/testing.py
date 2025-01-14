@@ -139,6 +139,8 @@ class WFO():
         while start + train_size + test_size <= len(data):
             train = data.iloc[start:start + train_size].stack(future_stack = True)
             test = data.iloc[start + train_size:start + train_size + test_size].stack(future_stack = True)
+            print(f"Train: {train.index[0][0]} - {train.index[-1][0]}")
+            print(f"Test: {test.index[0][0]} - {test.index[-1][0]}")
             yield train, test
             start += step_size
 
