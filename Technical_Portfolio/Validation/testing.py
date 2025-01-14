@@ -133,7 +133,7 @@ class WFO():
 
     
 
-    def split_data_by_time(data, train_duration, test_duration, step_duration):
+    def split_data_by_time(self, data, train_duration, test_duration, step_duration):
         """
         Splits the data into training and testing sets with each new training start time 
         starting after the step duration.
@@ -148,34 +148,44 @@ class WFO():
         Yields:
             Tuple[pd.DataFrame, pd.DataFrame]: The training and testing datasets.
         """
-        start_time = data.index[0]
-        
+        start_time = data.index[0][0]
         # Check if train_duration is an integer
-        if isinstance(train_duration, int):
-            freq = pd.infer_freq(data.index)
-            if freq == 'H':
-                train_duration = f'{train_duration}H'
+        if isinstance(train_duration, int) and isinstance(test_duration, int):
+            freq = pd.infer_freq(data.index.levels[0])
+            print(freq)
+            if freq == 'h':
+                train_duration = f'{train_duration}h'
+                test_duration = f'{test_duration}h'
+                step_duration = f'{step_duration}h'
             elif freq == 'D':
                 train_duration = f'{train_duration}D'
+                test_duration = f'{test_duration}D'
+                step_duration = f'{step_duration}D'
             elif freq == 'T':
                 train_duration = f'{train_duration}T'
+                test_duration = f'{test_duration}T'
+                step_duration = f'{step_duration}T'
             # Add more conditions here for other frequencies if needed
+            print(train_duration)
             
         train_duration = pd.to_timedelta(train_duration)  # Convert to Timedelta
+        test_duration = pd.to_timedelta(test_duration)  # Convert to Timedelta
 
         while True:
             train_end_time = start_time + train_duration
-            test_end_time = train_end_time + pd.to_timedelta(test_duration)
+            test_end_time = train_end_time + test_duration
             
             # Ensure we do not exceed the data range
-            if test_end_time > data.index[-1]:
+            if test_end_time > data.index[-1][0]:
                 break
 
             # Select the training and testing sets
-            train = data[start_time:train_end_time]
-            test = data[train_end_time:test_end_time]
+            train = data.loc[start_time:train_end_time]
+            test = data.loc[train_end_time:test_end_time]
 
-            yield train, test
+            # Print the training and testing set ranges
+            print(f'Training set: {train.index[0]} - {train.index[-1]}')
+            print(f'Testing set: {test.index[0]} - {test.index[-1]}')
 
             # Move the training window start time by step_duration
             start_time += pd.to_timedelta(step_duration)
