@@ -57,10 +57,11 @@ class Returns_Metrics():
     
     
 class Stress_Test():
-    def __init__(self, returns, num_simulations, confidence_level):
+    def __init__(self, returns, num_simulations, confidence_level, returns_length):
         self.returns = returns
         self.num_simulations = num_simulations
         self.confidence_level = confidence_level
+        self.returns_length = returns_length
         
     def normal_sims(self):
         mu, sigma = self.returns.mean(), self.returns.std()
@@ -86,8 +87,8 @@ class Stress_Test():
     def block_bootstrap(self, block_size):
         resampled_series = []
         for _ in range(self.num_simulations):
-            blocks = [self.returns[i:i + block_size] for i in range(len(self.returns) - block_size + 1)]
-            sampled_blocks = [blocks[np.random.randint(0, len(blocks))] for _ in range(len(self.returns) // block_size + 1)]
+            blocks = [self.returns[i:i + block_size] for i in range(len(self.returns_length) - block_size + 1)]
+            sampled_blocks = [blocks[np.random.randint(0, len(blocks))] for _ in range(len(self.returns_length) // block_size + 1)]
             resampled = np.concatenate(sampled_blocks)[:len(self.returns)]
             resampled_cum = np.exp(resampled.cumsum())
             resampled_series.append(resampled_cum)

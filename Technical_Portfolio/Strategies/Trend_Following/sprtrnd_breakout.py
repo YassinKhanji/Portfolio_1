@@ -336,7 +336,7 @@ class Sprtrnd_Breakout():
         Perform a stress test on the strategy, uses block bootstrap to simulate different paths        
         """
         strategy = self.results['strategy']
-        stress_test = Stress_Test(strategy, self.num_simulations, self.confidence_level)
+        stress_test = Stress_Test(strategy, self.num_simulations, self.confidence_level, len(self.results))
         self.sims = stress_test.block_bootstrap(self.blocks)
         self.metrics_df = stress_test.metrics_df_fnct(self.sims)
         self.overall_score = stress_test.score_strategy(self.metrics_df)
