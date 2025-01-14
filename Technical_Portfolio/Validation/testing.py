@@ -152,7 +152,6 @@ class WFO():
         # Check if train_duration is an integer
         if isinstance(train_duration, int) and isinstance(test_duration, int):
             freq = pd.infer_freq(data.index.levels[0])
-            print(freq)
             if freq == 'h':
                 train_duration = f'{train_duration}h'
                 test_duration = f'{test_duration}h'
@@ -165,8 +164,6 @@ class WFO():
                 train_duration = f'{train_duration}T'
                 test_duration = f'{test_duration}T'
                 step_duration = f'{step_duration}T'
-            # Add more conditions here for other frequencies if needed
-            print(train_duration)
             
         train_duration = pd.to_timedelta(train_duration)  # Convert to Timedelta
         test_duration = pd.to_timedelta(test_duration)  # Convert to Timedelta
