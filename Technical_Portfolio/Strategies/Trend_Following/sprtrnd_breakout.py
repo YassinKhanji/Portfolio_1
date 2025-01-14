@@ -38,7 +38,10 @@ class Sprtrnd_Breakout():
                             confidence_level = 0.95, 
                             blocks = 20, 
                             max_universe = 4,
-                            live = False):
+                            live = False, 
+                            train_size = 2200,
+                            test_size = 2200,
+                            step_size = 2200):
         self.df = df.copy()
         self.max_universe = max_universe
         self.optimize_fn = optimize_fn
@@ -64,9 +67,9 @@ class Sprtrnd_Breakout():
         
         self.performance = -np.inf
         self.results = None
-        self.train_size = 2200
-        self.test_size = 2200
-        self.step_size = 2200
+        self.train_size = train_size
+        self.test_size = test_size
+        self.step_size = step_size
         
         self.best_params = None
         self.cum_strategy = None
@@ -297,14 +300,14 @@ class Sprtrnd_Breakout():
                 self.trading_strategy,
                 self.param_space)
         
-        self.train_data = self.df.iloc[-self.train_size + self.test_size:]
-        self.test_data = self.df.iloc[-self.test_size:]
+        test_size = self.test_size if test else 0
+        self.train_data = self.df.iloc[-self.train_size + test_size:]
         self.best_params = wfo.optimize_parameters_gp(self.train_data, self.param_space)
-        
-        if test:
-            optimized_df = wfo.test_strategy(self.test_data, self.best_params)
 
-        return optimized_df[1]
+        if test:
+            self.test_data = self.df.iloc[-self.test_size:]
+            optimized_df = wfo.test_strategy(self.test_data, self.best_params)
+            return optimized_df[1]
 
     
     def test(self) -> None:

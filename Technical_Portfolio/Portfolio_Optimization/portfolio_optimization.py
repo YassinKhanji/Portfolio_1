@@ -44,10 +44,11 @@ class Portfolio_Optimization():
                             
     #### Helper Methods ####
     def split_data(self, data, train_size, test_size, step_size):
+        data = data.unstack()
         start = 0
         while start + train_size + test_size <= len(data):
-            train = data.iloc[start:start + train_size]
-            test = data.iloc[start + train_size:start + train_size + test_size]
+            train = data.iloc[start:start + train_size].stack(future_stack = True)
+            test = data.iloc[start + train_size:start + train_size + test_size].stack(future_stack = True)
             yield train, test
             start += step_size
             
