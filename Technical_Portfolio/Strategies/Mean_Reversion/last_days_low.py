@@ -41,13 +41,15 @@ class Last_Days_Low():
                             live = False,
                             train_size = 2200,
                             test_size = 2200,
-                            step_size = 2200):
+                            step_size = 2200,
+                            max_dollar_allocation = 1000):
         self.df = df.copy()
         self.max_universe = max_universe
         self.optimize_fn = optimize_fn
         self.objective = objective
         self.opt_freq = opt_freq
         self.live = live
+        self.max_dollar_allocation = max_dollar_allocation
         self.param_space = {
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),

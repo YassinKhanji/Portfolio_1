@@ -16,7 +16,7 @@ class Portfolio_Management():
         filtered_strategies = {strategy_name : strategy for strategy_name, strategy in strategy_rets_map.items() if strategy_name in selected}
         return pd.concat(filtered_strategies, axis = 1)
     
-    def filter_by_correlation(self, low_corr_threshold = 0.9):
+    def filter_by_correlation(self, low_corr_threshold = 1.0):
         """
         Filter the strategies by correlation
         """
@@ -32,7 +32,7 @@ class Portfolio_Management():
         for i in range(1, len(corr_matrix.columns)):
             candidate_strategy = corr_matrix.columns[i]
             correlations_with_selected = corr_matrix.loc[selected_strategies, candidate_strategy]
-            if all(corr < low_corr_threshold for corr in correlations_with_selected):
+            if all(corr <= low_corr_threshold for corr in correlations_with_selected):
                 selected_strategies.append(candidate_strategy)
         
         selected_strategies.append(corr_matrix.columns[0])

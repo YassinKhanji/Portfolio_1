@@ -41,13 +41,15 @@ class Sprtrnd_Breakout():
                             live = False, 
                             train_size = 2200,
                             test_size = 2200,
-                            step_size = 2200):
+                            step_size = 2200,
+                            max_dollar_allocation = 10000):
         self.df = df.copy()
         self.max_universe = max_universe
         self.optimize_fn = optimize_fn
         self.objective = objective
         self.opt_freq = opt_freq
         self.live = live
+        self.max_dollar_allocation = max_dollar_allocation
         self.param_space = {
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),
@@ -167,7 +169,6 @@ class Sprtrnd_Breakout():
         low_freq_index = 1, #The index of the lowest frequency for the resampling
         high_freq_index = 3, #The index of the highest frequency for the resampling
         max_perc_risk = 0.01,
-        max_dollar_allocation = 10000,
         sl_type = 'atr',
         tp_type = 'rr',
         sl_signal_only = True,
@@ -340,5 +341,3 @@ class Sprtrnd_Breakout():
         self.sims = stress_test.block_bootstrap(self.blocks)
         self.metrics_df = stress_test.metrics_df_fnct(self.sims)
         self.overall_score = stress_test.score_strategy(self.metrics_df)
-    
-        

@@ -36,6 +36,6 @@ class Portfolio_RM():
         drawdown_limit = np.where(drawdown < threshold, 0, self.returns)
         
         # Step 5: in_drawdown flag
-        in_drawdown = np.where(drawdown < threshold, 1, 0)
+        in_drawdown = np.where(drawdown < threshold, 1, 0).astype(bool)
         
         return pd.Series(drawdown_limit), pd.Series(in_drawdown)
