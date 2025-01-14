@@ -133,13 +133,54 @@ class WFO():
 
     
 
-    def split_data(self, data, train_size, test_size, step_size):
-        start = 0
-        while start + train_size + test_size <= len(data):
-            train = data.iloc[start:start + train_size]
-            test = data.iloc[start + train_size:start + train_size + test_size]
+    def split_data_by_time(data, train_duration, test_duration, step_duration):
+        """
+        Splits the data into training and testing sets with each new training start time 
+        starting after the step duration.
+
+        Args:
+            data (pd.DataFrame or pd.Series): The data to split, indexed by datetime.
+            train_duration (int or str): Duration for the training set. Can be an integer (e.g., 100) 
+                                        or a string (e.g., '7D', '12H').
+            test_duration (str): Duration for the testing set (e.g., '3D', '6H').
+            step_duration (str): Step size to move the window (e.g., '1D', '2H').
+
+        Yields:
+            Tuple[pd.DataFrame, pd.DataFrame]: The training and testing datasets.
+        """
+        start_time = data.index[0]
+        
+        # Check if train_duration is an integer
+        if isinstance(train_duration, int):
+            freq = pd.infer_freq(data.index)
+            if freq == 'H':
+                train_duration = f'{train_duration}H'
+            elif freq == 'D':
+                train_duration = f'{train_duration}D'
+            elif freq == 'T':
+                train_duration = f'{train_duration}T'
+            # Add more conditions here for other frequencies if needed
+            
+        train_duration = pd.to_timedelta(train_duration)  # Convert to Timedelta
+
+        while True:
+            train_end_time = start_time + train_duration
+            test_end_time = train_end_time + pd.to_timedelta(test_duration)
+            
+            # Ensure we do not exceed the data range
+            if test_end_time > data.index[-1]:
+                break
+
+            # Select the training and testing sets
+            train = data[start_time:train_end_time]
+            test = data[train_end_time:test_end_time]
+
             yield train, test
-            start += step_size
+
+            # Move the training window start time by step_duration
+            start_time += pd.to_timedelta(step_duration)
+
+
 
     def objective_function(self, result):
         """
@@ -265,7 +306,7 @@ class WFO():
         """
         all_performance = []
         all_results = []
-        for train, test in self.split_data(self.data, self.train_size, self.test_size, self.step_size):
+        for train, test in self.split_data_by_time(self.data, self.train_size, self.test_size, self.step_size):
             # Optimize on training data
             if self.optimize_fn == "grid":
                 best_params = self.optimize_parameters_grid(train, self.param_grid)

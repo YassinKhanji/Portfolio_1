@@ -135,28 +135,40 @@ class Stop_Loss():
         """
 
         _df = self.df.copy()
-
+        print(f'length when calling: {len(_df)}')
+        
         #Calculate the ATR indicator
         if self.sl_type.lower() == 'supertrend':
             raise ValueError("Fixed stop loss does not currently support the supertrend indicator, use Dynamic Stop Loss")
         elif self.sl_type.lower() == 'atr':
             #unstack dataframe
+            print(f'length before unstacking: {len(_df)}')
             _df = _df.copy().unstack()
+            print(f'length after unstacking: {len(_df)}')
+            
             if not any('atr'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the ATR indicator
                 for coin in _df.columns.levels[1]:
+                    print(len(_df))
                     high, low, close = _df['high', coin], _df['low', coin], _df['close', coin]
                     _df['atr', coin] = ta.atr(high, low, close, length=self.sl_ind_length)
+                    print(_df['atr', coin].value_counts())
+                    print(len(_df))
 
+                print(len(_df))
+                print(self.sl_ind_length)
                 _df = _df.iloc[self.sl_ind_length:] #Slice the dataframe to remove the NaN values from the ATR calculation
                 #It is better to do the above as we might get NaN values in other columns, so this might remove many needed rows
                 #Note: This is done at this first stage right after we calculate all the indicators, We need to create a function in the 
                     #future to remove the largest length needed for the calculations as this would be essential to warm up the data needed.
-            
+                print(len(_df))
+                
             #Calculate the stop loss
+            print(len(_df))
             _df = _df.stack(future_stack = True)
             _df['stop_loss'] = _df['close'] - self.sl_mult * _df['atr']
-
+            print(len(_df))
+            
         elif self.sl_type.lower() == 'percent':
             _df['stop_loss'] = _df['close'] * (1 - self.sl_percentage)
 
@@ -167,11 +179,13 @@ class Stop_Loss():
         ####Everything that comes after this is common for all fixed stop losses (percentage, dollar, indicator based, ...)#####
 
         #Unstack the dataframe
+        print(_df)
         _df = _df.unstack()
+        print(_df)
         # _df = _df.fillna(0)
         #Calculate the session stop loss
         for coin in _df.columns.levels[1]:
-            print(_df['stop_loss', coin])
+            print(_df)
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform('first')
             # Group by both the session and coin, then pass the coin as an additional argument
             if self.signal_only:

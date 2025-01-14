@@ -25,6 +25,7 @@ class Trend_Following():
 
     def supertrend_signals(self, df, length = 7, multiplier = 3):
         _df = df.copy().unstack()
+        len(_df)
 
         supertrend_results = {}
         # Iterate through each coin

@@ -215,11 +215,15 @@ class Last_Days_Low():
         cal = Calculations()
         mr = Mean_Reversion()
         #Generate a signal
+        print(f'length of data: {len(data)}')
         _df = mr.last_days_low(data.copy(), hourly_lookback, daily_lookback)
+        print(f'length of after signal: {len(_df)}')
 
         pos = Position(_df, _min_pos, _max_pos, self.live)
         _df = pos.initialize_position()
+        print(f'length after calculating the positions: {len(_df)}')
         sl = Stop_Loss(_df, sl_type, sl_ind_length, sl_ind_mult, sl_signal_only)
+        print(len(_df))
         _df = sl.apply_stop_loss(fixed_sl, plot = False)
         tp = Take_Profit(_df, tp_type, tp_mult, tp_signal_only)
         _df = tp.apply_take_profit(fixed_tp, plot = False)
