@@ -59,9 +59,7 @@ class WFO():
             raise ValueError("Parameter range exceeds train size or Test size.")
         elif train_size < 1 or test_size < 1 or step_size < 1:
             raise ValueError("Train, test, and step size must be greater than 0.")
-        elif test_size < train_size:
-            raise ValueError("Test size must be greater or equal to train size.")
-    
+        
         if optimize_fn not in ["grid", "gp"]:
             raise ValueError("Invalid optimization function")
         
