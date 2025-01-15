@@ -57,7 +57,7 @@ class Last_Days_Low():
         'hourly_lookback': Integer(1, 5),
         'daily_lookback': Integer(1, 5),
         '_min_pos': Real(0, 0.75),
-        '_max_pos': Real(0, 1),
+        '_max_pos': Real(0, 1.5),
         'sl_ind_length': Integer(5, 50),
         'sl_ind_mult': Real(0.5, 5),
         'tp_mult': Integer(2, 7),

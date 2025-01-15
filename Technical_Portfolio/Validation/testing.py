@@ -135,11 +135,13 @@ class WFO():
     
 
     def split_data(self, data, train_size, test_size, step_size):
-        data = data.unstack()
+        # data = data.unstack()
         start = 0
         while start + train_size + test_size <= len(data):
-            train = data.iloc[start:start + train_size].stack(future_stack = True)
-            test = data.iloc[start + train_size:start + train_size + test_size].stack(future_stack = True)
+            # train = data.iloc[start:start + train_size].stack(future_stack = True)
+            # test = data.iloc[start + train_size:start + train_size + test_size].stack(future_stack = True)
+            train = data.iloc[start:start + train_size]
+            test = data.iloc[start + train_size:start + train_size + test_size]
             print(f"Train: {train.index[0][0]} - {train.index[-1][0]}")
             print(f"Test: {test.index[0][0]} - {test.index[-1][0]}")
             yield train, test
