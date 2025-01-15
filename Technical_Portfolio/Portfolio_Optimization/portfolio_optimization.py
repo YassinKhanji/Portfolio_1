@@ -26,6 +26,7 @@ class Portfolio_Optimization():
         opt_period (str): The period to optimize over ['custom', 'daily', 'weekly', 'quarterly', 'semi-annually', 'yearly'].
         """
         self.log_rets = pd.concat(log_rets, axis = 1).fillna(0)
+        print('Length of log_rets: ', len(self.log_rets))
         if opt_freq == 'custom':
             self.train_size = train_size
         else:
@@ -36,6 +37,7 @@ class Portfolio_Optimization():
         
         
         if step_size + train_size + test_size > len(log_rets):
+            print('length of log_rets: ', len(log_rets))
             raise ValueError("Invalid train, test, or step size.")
         elif train_size < 1 or test_size < 1 or step_size < 1:
             raise ValueError("Train, test, and step size must be greater than 0.")
