@@ -24,7 +24,7 @@ class Portfolio_Optimization():
         objective (str): The objective function to maximize ("sharpe", "sortino", "calmar", "multiple").
         opt_period (str): The period to optimize over ['custom', 'daily', 'weekly', 'quarterly', 'semi-annually', 'yearly'].
         """
-        self.log_rets = log_rets
+        self.log_rets = pd.concat(log_rets, axis = 1).fillna(0)
         if opt_freq == 'custom':
             self.train_size = train_size
         else:

@@ -5,6 +5,7 @@ from skopt import gp_minimize
 from skopt.space import Integer, Categorical, Real
 import quantstats_lumi as qs
 from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
 
 
 
@@ -261,25 +262,55 @@ class WFO():
         return peformance, result
 
 
+    # def walk_forward_optimization(self):
+    #     """
+    #     Perform a walk-forward optimization on a dataset.
+    #     """
+    #     all_performance = []
+    #     all_results = []
+    #     for train, test in self.split_data(self.data, self.train_size, self.test_size, self.step_size):
+    #         # Optimize on training data
+    #         if self.optimize_fn == "grid":
+    #             best_params = self.optimize_parameters_grid(train, self.param_grid)
+    #         elif self.optimize_fn == "gp":
+    #             best_params = self.optimize_parameters_gp(train, self.param_grid)
+            
+    #         # Test on out-of-sample data
+    #         performance, result = self.test_strategy(test, best_params)
+    #         print(f"Out-of-sample performance: {performance}")
+            
+    #         all_performance.append(performance)
+    #         all_results.append(result)
+        
+    #     all_results = pd.concat(all_results)
+    #     return all_performance, all_results
+    
     def walk_forward_optimization(self):
         """
-        Perform a walk-forward optimization on a dataset.
+        Perform a walk-forward optimization on a dataset using parallel threads.
         """
         all_performance = []
         all_results = []
-        for train, test in self.split_data(self.data, self.train_size, self.test_size, self.step_size):
-            # Optimize on training data
-            if self.optimize_fn == "grid":
-                best_params = self.optimize_parameters_grid(train, self.param_grid)
-            elif self.optimize_fn == "gp":
-                best_params = self.optimize_parameters_gp(train, self.param_grid)
+
+        with ThreadPoolExecutor() as executor:
+            futures = []
+            for train, test in self.split_data(self.data, self.train_size, self.test_size, self.step_size):
+                futures.append(executor.submit(self.perform_walk_forward_iteration, train, test))
+
+            for future in futures:
+                performance, result = future.result()
+                all_performance.append(performance)
+                all_results.append(result)
             
-            # Test on out-of-sample data
-            performance, result = self.test_strategy(test, best_params)
-            print(f"Out-of-sample performance: {performance}")
-            
-            all_performance.append(performance)
-            all_results.append(result)
-        
         all_results = pd.concat(all_results)
         return all_performance, all_results
+
+    def perform_walk_forward_iteration(self, train, test):
+        if self.optimize_fn == "grid":
+            best_params = self.optimize_parameters_grid(train, self.param_grid)
+        elif self.optimize_fn == "gp":
+            best_params = self.optimize_parameters_gp(train, self.param_grid)
+
+        performance, result = self.test_strategy(test, best_params)
+        print(f"Out-of-sample performance: {performance}")
+        return performance, result
