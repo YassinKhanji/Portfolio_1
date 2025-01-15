@@ -40,13 +40,15 @@ class Deploy():
         self.step_size = 200
         self.low_corr_thresh = 1.0
         self.market_data_filename = 'market_data.csv'
-        self.strategy_data_filename = 'strategy_data.csv'
+        self.strategy_data_filename = 'strategy_returns.csv'
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
         data = self.load_data_from_csv(market_data_filename)
         strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
+        live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
+        live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         self.halal_symbols = get_halal_symbols()
         cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
@@ -62,13 +64,16 @@ class Deploy():
         self.best_weights = None
         self.symbols_to_liquidate = None
         self.selected_strategy = None
+        self.data_instance = None
         self.drawdown_threshold = -0.15
         self.max_rows_market_data = self.market_data_size = 2000
         
+    
+    ############ Helper Methods ############
     def symbols_in_current_balance(self):
         # Fetch account balance
         try:
-            balance = exchange.fetch_balance()
+            balance = self.exchange.fetch_balance()
 
             # Extract symbols with non-zero balance
             symbols = [
@@ -81,18 +86,25 @@ class Deploy():
         except ccxt.BaseError as e:
             print(f"An error occurred: {e}")
             
+    def get_last_row(self, data):
+        """Get the last date in the dataset."""
+        last_date = data.index.get_level_values("date").max()
+        return data.loc[last_date]
+            
     def buy(self, to_add, coin):
         try:
             order = self.exchange.create_market_buy_order(coin, to_add)
             print(f"Buy order placed: {order}")
         except Exception as e:
             print(f"Error: {e}")
+            
     def sell(self, to_sell, coin):
         try:
-            order = exchange.create_market_sell_order(coin, to_sell)
+            order = self.exchange.create_market_sell_order(coin, to_sell)
             print(f"Sell order placed: {order}")
         except Exception as e:
             print(f"Error: {e}")
+            
     def liquidate(self, symbols):
         try:
             # Step 1: Get your balances
@@ -106,7 +118,7 @@ class Deploy():
 
                         # Determine the symbol for the sell order (e.g., BTC/USD, ETH/USDT)
                         symbol = f"{coin}/USD"  # Replace USD with your preferred quote currency
-                        order = exchange.create_market_sell_order(symbol, coin_balance)
+                        order = self.exchange.create_market_sell_order(symbol, coin_balance)
                         print(f"Sell order placed: {order}")
                     else:
                         print(f"No {coin} to sell.")
@@ -115,41 +127,14 @@ class Deploy():
 
         except Exception as e:
             print(f"Error: {e}")
-            
-    def upload_complete_market_data(self, data_size = 2200):
-        start_time = (dt.datetime.now() - dt.timedelta(hours= data_size)).date()
-        end_time = dt.datetime.now().date()
-        timeframes = ['1w', '1d', '4h', '1h', '30m','15m', '5m', '1m']
-        index = 3 #It is better to choose the highest frequency for the backtest to be able to downsample
-        interval = timeframes[index]
-        data_instance = Data(halal_symbols, interval, start_time, end_time, exchange = 'kraken')
-        data = data_instance.df
-        last_date_data = data.index.get_level_values(0).unique()[-1].tz_localize('UTC')
-        
-        if dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) != last_date_data:
-            time_difference = dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - last_date_data
-            hours_difference = time_difference.total_seconds() / 3600 # Get the number of hours
-            missing_data = fetch_latest_data(halal_symbols, interval, limit = int(hours_difference) + 1).result()
-            complete_data = pd.concat([data, missing_data])
-            
-        complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
-        complete_data.to_csv('market_data.csv')
-        print('Market data updated successfully')
-        
-    #Helper function
-    def get_last_row(self, data):
-        """Get the last date in the dataset."""
-        last_date = data.index.get_level_values("date").max()
-        last_date_data = data.loc[last_date]
-        return last_date_data
     
-    def get_portfolio_value(self, exchange):
+    def get_portfolio_value(self):
         try:
             # Fetch account balances
-            balances = exchange.fetch_balance()
+            balances = self.exchange.fetch_balance()
 
             # Fetch tickers to get the latest prices
-            tickers = exchange.fetch_tickers()
+            tickers = self.exchange.fetch_tickers()
 
             # Calculate portfolio value in USD (or another base currency)
             portfolio_value = 0.0
@@ -165,45 +150,55 @@ class Deploy():
                         if pair in tickers:
                             price = tickers[pair]['last']
                             portfolio_value += balance * price
-                        else:
-                            # Handle currencies without USD pairs (e.g., trade to BTC, then USD)
-                            btc_pair = f"{currency}/BTC"
-                            if btc_pair in tickers:
-                                btc_price = tickers[btc_pair]['last']
-                                usd_price = tickers["BTC/USD"]['last']
-                                portfolio_value += balance * btc_price * usd_price
-
             return round(portfolio_value, 2)
 
         except ccxt.BaseError as e:
             print(f"An error occurred: {str(e)}")
             return None
-
         
     def format_symbols(self, symbols):
         """Converts the symbols to a format that the exchange understands."""
         if symbols[0].endswith('T'):
             symbols = [s[:-1] for s in symbols]
-        formatted_symbols = [symbol.replace("USD", "/USD") for symbol in symbols]
-        return formatted_symbols
+        return [symbol.replace("USD", "/USD") for symbol in symbols]
 
     def filter_halal_df(self, data):
         # Drop multiple coins
         halal_symbols = ['BTC/USD', 'ETH/USD', 'LTC/USD']
-        data_filtered = data[data.index.get_level_values("coin").isin(halal_symbols)]
-        return data_filtered
+        return data[data.index.get_level_values("coin").isin(halal_symbols)]
     
 
+    ############ Main Methods ############
+    def upload_complete_market_data(self, data_size = 2200):
+        start_time = (dt.datetime.now() - dt.timedelta(hours= (self.train_size + self.test_size) * 4)).date()
+        end_time = dt.datetime.now().date()
+        timeframes = ['1w', '1d', '4h', '1h', '30m','15m', '5m', '1m']
+        index = 3 #It is better to choose the highest frequency for the backtest to be able to downsample
+        interval = timeframes[index]
+        self.data_instance = Data(self.halal_symbols, interval, start_time, end_time, exchange = 'kraken')
+        data = self.data_instance.df
+        last_date_data = data.index.get_level_values(0).unique()[-1].tz_localize('UTC')
+        
+        if dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) != last_date_data:
+            time_difference = dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - last_date_data
+            hours_difference = time_difference.total_seconds() / 3600 # Get the number of hours
+            missing_data = self.fetch_latest_data(self.halal_symbols, interval, limit = int(hours_difference) + 1).result()
+            complete_data = pd.concat([data, missing_data])
+            
+        complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
+        complete_data.to_csv('market_data.csv')
+        print('Market data updated successfully')    
+
     @unsync
-    def fetch_latest_data(symbols, timeframe, limit=2):
+    def fetch_latest_data(self, limit=2):
         """Fetch latest OHLCV data for multiple symbols and stack them into a single DataFrame."""
         
-        formatted_symbols = format_symbols(symbols)
+        formatted_symbols = self.format_symbols(self.halal_symbols)
         
         def fetch_symbol_data(symbol):
             """Fetch data for a single symbol and return a DataFrame."""
             try:
-                ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+                ohlcv = self.exchange.fetch_ohlcv(symbol, self.timeframe, limit=limit)
                 df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df.set_index('timestamp', inplace=True)
@@ -223,7 +218,7 @@ class Deploy():
             stacked_df = pd.concat(data_frames)
             stacked_df.set_index('coin', append=True, inplace=True)
             stacked_df = stacked_df[~stacked_df.index.duplicated()]  # Remove duplicates
-            df = data_instance.prepare_data(stacked_df.unstack())
+            df = self.data_instance.prepare_data(stacked_df.unstack())
             df.reset_index(level = 1, inplace = True)
             df['coin'] = df['coin'].str.replace('/USD', 'USDT', regex=False)
             df.set_index('coin', append = True, inplace = True)
@@ -233,7 +228,7 @@ class Deploy():
             
         # Append new data to CSV and maintain max length (asynchronous)
     @unsync
-    def append_to_csv_with_limit(self, data):
+    def append_to_csv_with_limit(self, data, latest):
         """_summary_
 
         Args:
@@ -241,50 +236,52 @@ class Deploy():
             filename (_type_): _description_
             max_rows (int, optional): _description_. Defaults to 2202. Should be account for the max number of rows needed for any of the processes
         """
+        filename = self.market_data_filename
         file_exists = os.path.isfile(filename)
         df = pd.DataFrame(data)
-        
         if file_exists:
             existing_df = pd.read_csv(filename, index_col=['date', 'coin'], parse_dates=['date'])
             if existing_df.index.get_level_values(0).unique()[-1] == latest.index.get_level_values(0).unique()[-1]:
                 return
             combined_df = pd.concat([existing_df, df])
-            if len(combined_df) > max_rows:
-                combined_df = combined_df.iloc[-max_rows:]  # Keep only the last max_rows rows
+            if len(combined_df) > self.max_rows_market_data:
+                combined_df = combined_df.iloc[-self.max_rows_market_data:]  # Keep only the last max_rows rows
             combined_df.to_csv(filename)
         else:
             print('File does not exist')
             df.to_csv(filename, mode='w', header=True)
             
     #Getting the data from csv
-    def load_data_from_csv(self, filename):
+    def load_data_from_csv(self):
+        filename = self.market_data_filename
         if os.path.isfile(filename):
             data = pd.read_csv(filename, index_col=['date', 'coin'], parse_dates=['date'])
-            if len(data) >= train_size + test_size:
+            if len(data) >= self.train_size + self.test_size:
                 return data
         else:
             return pd.DataFrame()
     
-    def perform_portfolio_rm(self, best_weights, exchange, drawdown_threshold = -0.15):
+    def perform_portfolio_rm(self):
         
-        current_strategy_returns_df = pd.read_csv('strategy_returns.csv')
+        current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=['date'], parse_dates=['date'])
 
-        portfolio_returns = np.dot(best_weights, current_strategy_returns_df.T)
+        portfolio_returns = np.dot(self.best_weights, current_strategy_returns_df.T)
 
         portfolio_rm_instance = Portfolio_RM(portfolio_returns)
 
-        drawdown_limit, in_drawdown = portfolio_rm_instance.drawdown_limit(drawdown_threshold)
+        drawdown_limit, in_drawdown = portfolio_rm_instance.drawdown_limit(self.drawdown_threshold)
 
         if in_drawdown.iloc[-1]:
             #Liquidate the portfolio
             print(f'Liquidating the portfolio because in_drawdown in {in_drawdown.iloc[-1]}')
-            symbols_to_liquidate = self.symbols_in_current_balance(exchange)
-            self.liquidate(symbols_to_liquidate, exchange)
+            symbols_to_liquidate = self.symbols_in_current_balance()
+            self.liquidate(symbols_to_liquidate)
             return True
         else :
             print(f'Portfolio is not in drawdown because in drawdown is {in_drawdown.iloc[-1]}')
             return False
         
+    ###### Continue Here ######
     def run_wfo_and_get_results_returns(self, strategy_map):
         """_summary_
         Takes the strategy map, runs the WFO for each strategy and returns the results of the strategy returns after the WFO.
@@ -370,9 +367,9 @@ class Deploy():
         return best_weights
     
     
-    def run_strategy(self, exchange, halal_symbols, selected_strategy, best_params, best_weights, timeframe = '1h'):
+    def run_strategy(self, halal_symbols, selected_strategy, best_params, best_weights, timeframe = '1h'):
         #Get the current_total_balance
-        current_total_balance = get_portfolio_value(exchange)
+        current_total_balance = self.get_portfolio_value()
 
         #Store the max allocation for each strategy in a dictionary
         max_allocation_map = {
@@ -388,9 +385,9 @@ class Deploy():
                 
         
         timeframe = timeframe
-        latest = fetch_latest_data(halal_symbols, timeframe).result()
-        append_to_csv_with_limit(latest, 'market_data.csv').result()
-        data = load_data_from_csv('market_data.csv')
+        latest = self.fetch_latest_data(halal_symbols, timeframe).result()
+        self.append_to_csv_with_limit(latest, 'market_data.csv').result()
+        data = self.load_data_from_csv('market_data.csv')
         
         
         #Run each strategy on enough data points and get the total portfolio value

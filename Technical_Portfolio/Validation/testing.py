@@ -19,7 +19,8 @@ class WFO():
                  step_size = 1000, 
                  optimize_fn="grid",
                  objective = 'sharpe',
-                 opt_freq = 'custom'):
+                 opt_freq = 'custom',
+                 live = False):
         """
         This class performs a walk-forward optimization on a trading strategy.
 
@@ -35,6 +36,7 @@ class WFO():
         opt_period (str): The period to optimize over ['custom', 'daily', 'weekly', 'quarterly', 'semi-annually', 'yearly'].
         """
         self.data = data
+        self.live = live
         self.trading_strategy = trading_strategy
         self.param_grid = param_grid
         if opt_freq == 'custom':
@@ -135,17 +137,25 @@ class WFO():
     
 
     def split_data(self, data, train_size, test_size, step_size):
-        # data = data.unstack()
+        data = data.unstack()
         start = 0
         while start + train_size + test_size <= len(data):
-            # train = data.iloc[start:start + train_size].stack(future_stack = True)
-            # test = data.iloc[start + train_size:start + train_size + test_size].stack(future_stack = True)
-            train = data.iloc[start:start + train_size]
-            test = data.iloc[start + train_size:start + train_size + test_size]
+            train = data.iloc[start:start + train_size].stack(future_stack = True)
+            test = data.iloc[start + train_size:start + train_size + test_size].stack(future_stack = True)
             print(f"Train: {train.index[0][0]} - {train.index[-1][0]}")
             print(f"Test: {test.index[0][0]} - {test.index[-1][0]}")
             yield train, test
             start += step_size
+            
+    # def split_data(self, data, train_size, test_size, step_size):
+    #     start = 0
+    #     while start + train_size + test_size <= len(data):
+    #         train = data.iloc[start:start + train_size]
+    #         test = data.iloc[start + train_size:start + train_size + test_size]
+    #         print(f"Train: {train.index[0][0]} - {train.index[-1][0]}")
+    #         print(f"Test: {test.index[0][0]} - {test.index[-1][0]}")
+    #         yield train, test
+    #         start += step_size
 
 
     def objective_function(self, result):
@@ -250,6 +260,15 @@ class WFO():
             n_calls=10,  # Number of evaluations
             random_state=42,
         )
+        
+        if self.live:
+            x_values = []
+            for _ in range(5):
+                result = gp_minimize(objective, param_space, n_calls=10)
+                x_values.append(result.x)
+
+            average_x = np.mean(x_values, axis=0) # Average x values
+            return {dim.name: val for dim, val in zip(param_space, average_x)}
         
         # Extract the best parameters
         print(f'Best Params: {result.x}')

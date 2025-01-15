@@ -299,7 +299,8 @@ class Sprtrnd_Breakout():
         """
         wfo = WFO(self.df,
                 self.trading_strategy,
-                self.param_space)
+                self.param_space,
+                live = self.live)
         
         test_size = self.test_size if test else 0
         self.train_data = self.df.iloc[-self.train_size + test_size:]
@@ -327,7 +328,8 @@ class Sprtrnd_Breakout():
                     step_size=self.step_size, 
                     optimize_fn=self.optimize_fn, 
                     objective=self.objective, 
-                    opt_freq=self.opt_freq)
+                    opt_freq=self.opt_freq,
+                    live = self.live)
 
         self.performance, self.results = wfo.walk_forward_optimization()
         self.results['cstrategy'] = self.cum_strategy = (self.results['strategy'] * (1/self.max_universe)).cumsum().apply(np.exp)
