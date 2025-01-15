@@ -167,7 +167,6 @@ class Last_Days_Low():
         low_freq_index = 1, #The index of the lowest frequency for the resampling
         high_freq_index = 3, #The index of the highest frequency for the resampling
         max_perc_risk = 0.01,
-        max_dollar_allocation = 10000,
         sl_type = 'atr',
         tp_type = 'rr',
         sl_signal_only = True,
@@ -242,7 +241,7 @@ class Last_Days_Low():
         print('Position Calculated')
 
         mt = Manage_Trade(_df)
-        _df = mt.erw_actual_allocation(max_perc_risk, max_dollar_allocation)
+        _df = mt.erw_actual_allocation(max_perc_risk, self.max_dollar_allocation)
         print('Manage Trade Applied')
         
         _df = cal.update_all(_df)
@@ -263,7 +262,7 @@ class Last_Days_Low():
 
         #Perform coarse analysis and filtering
         coarse = Coarse()
-        df = coarse.volume_flag(df, max_dollar_allocation)
+        df = coarse.volume_flag(df, self.max_dollar_allocation)
         df = coarse.sort_by_volume(df)
         df = coarse.sort_by_std(df, std_window, mean_window)
         print('Coarse Analysis Done')

@@ -243,7 +243,7 @@ class Sprtrnd_Breakout():
         print('Position Calculated')
 
         mt = Manage_Trade(_df)
-        _df = mt.erw_actual_allocation(max_perc_risk, max_dollar_allocation)
+        _df = mt.erw_actual_allocation(max_perc_risk, self.max_dollar_allocation)
         print('Manage Trade Applied')
         
         _df = cal.update_all(_df)
@@ -264,7 +264,7 @@ class Sprtrnd_Breakout():
 
         #Perform coarse analysis and filtering
         coarse = Coarse()
-        df = coarse.volume_flag(df, max_dollar_allocation)
+        df = coarse.volume_flag(df, self.max_dollar_allocation)
         df = coarse.sort_by_volume(df)
         df = coarse.sort_by_std(df, std_window, mean_window)
         print('Coarse Analysis Done')
