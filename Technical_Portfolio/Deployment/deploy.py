@@ -56,6 +56,11 @@ class Deploy():
             'strat_1': strat_1_instance,
             'strat_2': strat_2_instance
         }
+        self.live_strategy_map = {
+            'cash_strat': cash_df,
+            'strat_1': live_strat_1_instance,
+            'strat_2': live_strat_2_instance
+        }
         self.strategy_optimization_frequency = self.step_size
         self.portfolio_optimization_frequency = 300 #Every 2 Weeks
         self.portfolio_management_frequency = 4400 #Around 6 months
@@ -64,9 +69,11 @@ class Deploy():
         self.best_weights = None
         self.symbols_to_liquidate = None
         self.selected_strategy = None
+        self.live_selected_strategy = None
         self.data_instance = None
         self.drawdown_threshold = -0.15
         self.max_rows_market_data = self.market_data_size = 2000
+        self.length_of_data_to_run_strategy = 100 
         
     
     ############ Helper Methods ############
@@ -85,6 +92,16 @@ class Deploy():
             print("Symbols in your current balance:", symbols)
         except ccxt.BaseError as e:
             print(f"An error occurred: {e}")
+    def get_coin_balance(self, formatted_coin):
+        try:
+            balance = self.exchange.fetch_balance()
+            return balance['total'][formatted_coin]
+        except Exception as e:
+            print(f"Error fetching balance for {coin}: {e}")
+            return None
+    
+    def get_coin_allocation(self, coin, current_allocation_latest_row):
+        return current_allocation_latest_row.loc[(slice(None), coin), :][-1]
             
     def get_last_row(self, data):
         """Get the last date in the dataset."""
@@ -228,7 +245,7 @@ class Deploy():
             
         # Append new data to CSV and maintain max length (asynchronous)
     @unsync
-    def append_to_csv_with_limit(self, data, latest):
+    def append_to_csv_with_limit(self, latest):
         """_summary_
 
         Args:
@@ -238,10 +255,10 @@ class Deploy():
         """
         filename = self.market_data_filename
         file_exists = os.path.isfile(filename)
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(latest)
         if file_exists:
             existing_df = pd.read_csv(filename, index_col=['date', 'coin'], parse_dates=['date'])
-            if existing_df.index.get_level_values(0).unique()[-1] == latest.index.get_level_values(0).unique()[-1]:
+            if existing_df.index.get_level_values(0).unique()[-1] == df.index.get_level_values(0).unique()[-1]:
                 return
             combined_df = pd.concat([existing_df, df])
             if len(combined_df) > self.max_rows_market_data:
@@ -266,6 +283,10 @@ class Deploy():
         current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=['date'], parse_dates=['date'])
 
         portfolio_returns = np.dot(self.best_weights, current_strategy_returns_df.T)
+        
+        # This will be used to plot the current portfolio 
+        portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
+        portfolio_cumulative_returns.plot()
 
         portfolio_rm_instance = Portfolio_RM(portfolio_returns)
 
@@ -280,9 +301,8 @@ class Deploy():
         else :
             print(f'Portfolio is not in drawdown because in drawdown is {in_drawdown.iloc[-1]}')
             return False
-        
-    ###### Continue Here ######
-    def run_wfo_and_get_results_returns(self, strategy_map):
+    
+    def run_wfo_and_get_results_returns(self):
         """_summary_
         Takes the strategy map, runs the WFO for each strategy and returns the results of the strategy returns after the WFO.
         It also adds the df of the strategy returns to a csv file
@@ -294,13 +314,13 @@ class Deploy():
             results_strategy_returns (_type_): _description_ the results of the strategy returns after the WFO
         """
         #Run the WFO for each strategy (but the cash strategy)
-        for key, value in strategy_map.items():
+        for key, value in self.strategy_map.items():
             if key != 'cash_strat':
                 value.test()
                 
         #Make a new dictionary that contains the results strategy returns of the WFO
         results_strategy_returns = {}
-        for key, value in strategy_map.items():
+        for key, value in self.strategy_map.items():
             if key != 'cash_strat':
                 results_strategy_returns[key] = value.results.strategy
             elif key == 'cash_strat':
@@ -312,24 +332,24 @@ class Deploy():
         
         return results_strategy_returns
             
-    def perform_portfolio_management(strategy_map, low_corr_threshold = 1):
+    def perform_portfolio_management(self):
         """_summary_
 
         Args:
             strategy_map (_type_): _description_
             low_corr_threshold (int, optional): _description_. Defaults to 1.
         """
-        results_strategy_returns = run_wfo_and_get_results_returns(strategy_map)
+        results_strategy_returns = self.run_wfo_and_get_results_returns()
 
         portfolio_management = Portfolio_Management(results_strategy_returns)
 
-        keys_for_selected_strategy = portfolio_management.filter_by_correlation(low_corr_threshold=low_corr_threshold).columns
+        keys_for_selected_strategy = portfolio_management.filter_by_correlation(low_corr_threshold= self.low_corr_thresh).columns
 
-        selected_strategy = {key: value for key, value in strategy_map.items() if key in keys_for_selected_strategy}
-
-        return selected_strategy
+        self.selected_strategy = {key: value for key, value in self.strategy_map.items() if key in keys_for_selected_strategy}
         
-    def perform_optimization(self, strategy_map):
+        self.live_selected_strategy = {key: value for key, value in self.live_strategy_map.items() if key in keys_for_selected_strategy}
+        
+    def perform_optimization(self):
         """_summary_
 
         Args:
@@ -337,16 +357,14 @@ class Deploy():
         """
 
         #Run the optimization to get the strategy parameters
-        for key, value in strategy_map.items():
+        for key, value in self.live_strategy_map.items():
             if key != 'cash_strat':
                 value.optimize()
 
         #Storing the best_params for each strategy in a separate dictionary
-        best_params = {key: value.best_params for key, value in strategy_map.items() if key != 'cash_strat'}
-
-        return best_params
+        self.best_params = {key: value.best_params for key, value in self.strategy_map.items() if key != 'cash_strat'}
         
-    def perform_portfolio_optimization(self, strategy_map, strategy_returns_df):
+    def perform_portfolio_optimization(self):
         """_summary_
 
         Args:
@@ -355,49 +373,45 @@ class Deploy():
             test_size (int, optional): _description_. Defaults to 1000.
             step_size (int, optional): _description_. Defaults to 1000.
         """
-        results_strategy_returns = self.run_wfo_and_get_results_returns(strategy_map)
+        results_strategy_returns = self.run_wfo_and_get_results_returns(self.strategy_map)
         
         #Get portfolio optimization instance
-        portfolio_optimization_instance = Portfolio_Optimization(log_rets = results_strategy_returns, train_size = train_size, test_size = test_size, step_size = step_size, objective = 'multiple')
+        portfolio_optimization_instance = Portfolio_Optimization(log_rets = results_strategy_returns, train_size = self.train_size, test_size = self.test_size, step_size = self.step_size, objective = 'multiple')
 
-        #Run the optimization
-        train_data = strategy_returns_df.iloc[-train_size:]
-        best_weights = portfolio_optimization_instance.optimize_weights_minimize(train_data)
-
-        return best_weights
+        #Run the 
+        results_strategy_returns_df = pd.concat(results_strategy_returns, axis = 1).fillna(0)
+        train_data = results_strategy_returns_df.iloc[-self.train_size:]
+        self.best_weights = portfolio_optimization_instance.optimize_weights_minimize(train_data)
     
-    
-    def run_strategy(self, halal_symbols, selected_strategy, best_params, best_weights, timeframe = '1h'):
+    def run_strategy(self):
         #Get the current_total_balance
         current_total_balance = self.get_portfolio_value()
 
         #Store the max allocation for each strategy in a dictionary
         max_allocation_map = {
-            key: best_weights[i] * current_total_balance / strategy.max_universe
-            for i, (key, strategy) in enumerate(selected_strategy.items())
-            if i < len(best_weights) and best_weights[i] > 0 and key != 'cash_strat'
+            key: self.best_weights[i] * current_total_balance / strategy.max_universe
+            for i, (key, strategy) in enumerate(self.selected_strategy.items())
+            if i < len(self.best_weights) and self.best_weights[i] > 0 and key != 'cash_strat'
         }
 
         #Rebuild the strategy map, with the updated max_allocation for each strategy
-        for key, value in selected_strategy.items():
+        for key, value in self.live_selected_strategy.items():
             if key != 'cash_strat':
                 value.max_dollar_allocation = max_allocation_map[key]
                 
         
         timeframe = timeframe
-        latest = self.fetch_latest_data(halal_symbols, timeframe).result()
-        self.append_to_csv_with_limit(latest, 'market_data.csv').result()
-        data = self.load_data_from_csv('market_data.csv')
+        latest = self.fetch_latest_data().result()
+        self.append_to_csv_with_limit(latest).result()
+        data = self.load_data_from_csv()
         
         
         #Run each strategy on enough data points and get the total portfolio value
-        length_of_data_to_run_strategy = 100 #This does not have to do with anything with test_size or train_size,
-            #but it is better to be equal to the test_size because we want get the latest returns of the strategy with the latest best_params to get the current strategy returns
-        data_to_run_strategy = data.iloc[-length_of_data_to_run_strategy:]
+        data_to_run_strategy = data.iloc[-self.length_of_data_to_run_strategy:]
         
         current_strategy_results = {
-            key: value.trading_strategy(data_to_run_strategy, best_params[key])
-            for key, value in selected_strategy.items()
+            key: value.trading_strategy(data_to_run_strategy, self.best_params[key])
+            for key, value in self.live_selected_strategy.items()
             if key != 'cash_strat'
         }
         
@@ -409,43 +423,39 @@ class Deploy():
         
         current_allocation_results_df = pd.concat(current_allocation_strategy_map, axis=1).fillna(0).sum(axis=1)
         
-        current_allocation = get_last_row(current_allocation_results_df)
+        current_allocation = self.get_last_row(current_allocation_results_df)
         
         current_universe = list(
             set(
                 value.current_universe
-                for value in selected_strategy.values()
+                for value in self.live_selected_strategy.values()
                 if key != 'cash_strat'
             )
         )
 
-        symbols_in_current_balance = symbols_in_current_balance(exchange)
+        symbols_in_current_balance = self.symbols_in_current_balance()
         # Find symbols in current balance but not in current universe
         symbols_not_in_universe = [symbol for symbol in symbols_in_current_balance if symbol not in current_universe]
 
         # Liquidate the symbols not in the current universe
         print(f"Liquidating {symbols_not_in_universe}...")
-        liquidate(symbols_not_in_universe, exchange)
+        self.liquidate(symbols_not_in_universe)
         print("Liquidation complete.")
 
         for coin in current_universe:
             formatted_coin = coin.replace('USDT', '')
-            coin_balance = get_coin_balance(formatted_coin)
-            current_coin_allocation = get_coin_allocation(coin, current_allocation)
+            coin_balance = self.get_coin_balance(formatted_coin)
+            current_coin_allocation = self.get_coin_allocation(coin, current_allocation)
             
             to_add = current_coin_allocation - coin_balance
             
             if to_add > 0:
                 print(f"Adding {to_add} {formatted_coin} to the portfolio...")
-                buy(to_add, coin, exchange)
+                self.buy(round(to_add, 2), coin)
             elif to_add < 0:
                 print(f"Selling {-to_add} {formatted_coin} from the portfolio...")
-                sell(-to_add, coin, exchange)
-                
-        # This will be used to plot the current portfolio 
-        portfolio_returns = np.dot(best_weights, current_strategy_returns_df.T)
-        portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
-        portfolio_cumulative_returns.plot()
+                self.sell(round(-to_add, 2), coin)
+            
         
     def main_loop(self):
         # THE MAIN LOOP
@@ -456,19 +466,19 @@ class Deploy():
             time.sleep(sleep_duration)
             data = self.load_data_from_csv(self.market_data_filename)
 
-            if counter % self.strategy_optimization_frequency == 0:
-                best_params = self.perform_optimization(self.strategy_map)
+            if self.counter % self.strategy_optimization_frequency == 0:
+                self.perform_optimization()
 
-            if counter % self.portfolio_optimization_frequency == 0:
-                best_weights = self.perform_portfolio_optimization(self.strategy_map, train_size=self.train_size, test_size=test_size, step_size=step_size)
+            if self.counter % self.portfolio_optimization_frequency == 0:
+                self.perform_portfolio_optimization()
 
-            if counter % self.portfolio_management_frequency == 0:
-                selected_strategy = perform_portfolio_management(strategy_map, low_corr_threshold=low_corr_thresh)
+            if self.counter % self.portfolio_management_frequency == 0:
+                self.perform_portfolio_management()
 
-            if self.perform_portfolio_rm(best_weights, exchange, drawdown_threshold=drawdown_threshold):
+            if not self.perform_portfolio_rm():
                 continue
 
-            self.frun_strategy(exchange, halal_symbols, selected_strategy, best_params, best_weights, timeframe=timeframe)
+            self.run_strategy()
             
             self.counter += 1
         
