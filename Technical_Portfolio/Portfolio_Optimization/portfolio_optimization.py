@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 import quantstats_lumi as qs
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class Portfolio_Optimization():
     def __init__(self, log_rets, 
@@ -149,22 +150,57 @@ class Portfolio_Optimization():
         return peformance, result
 
 
+    # def walk_forward_optimization(self):
+    #     """
+    #     Perform a walk-forward optimization on a dataset.
+    #     """
+    #     all_performance = []
+    #     all_results = []
+    #     for train, test in self.split_data(self.log_rets, self.train_size, self.test_size, self.step_size):
+    #         # Optimize on training data    
+    #         weights = self.optimize_weights_minimize(train)
+            
+    #         # Test on out-of-sample data
+    #         performance, result = self.test_weights(test, weights)
+    #         print(f"Out-of-sample performance: {performance}")
+            
+    #         all_performance.append(performance)
+    #         all_results.append(pd.DataFrame(result))
+        
+    #     all_results = pd.concat(all_results).reset_index(drop = True)
+    #     return all_performance, all_results
+    
+
     def walk_forward_optimization(self):
         """
-        Perform a walk-forward optimization on a dataset.
+        Perform a walk-forward optimization on a dataset using ThreadPoolExecutor for parallelism.
         """
         all_performance = []
         all_results = []
-        for train, test in self.split_data(self.log_rets, self.train_size, self.test_size, self.step_size):
-            # Optimize on training data    
+
+        def process_walk_forward(train, test):
+            """
+            Optimize weights on training data and test on out-of-sample data.
+            """
             weights = self.optimize_weights_minimize(train)
-            
-            # Test on out-of-sample data
             performance, result = self.test_weights(test, weights)
             print(f"Out-of-sample performance: {performance}")
-            
-            all_performance.append(performance)
-            all_results.append(pd.DataFrame(result))
-        
-        all_results = pd.concat(all_results).reset_index(drop = True)
+            return performance, pd.DataFrame(result)
+
+        # Use ThreadPoolExecutor to process tasks concurrently
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(process_walk_forward, train, test)
+                for train, test in self.split_data(self.log_rets, self.train_size, self.test_size, self.step_size)
+            ]
+
+            # Collect results as they complete
+            for future in as_completed(futures):
+                performance, result = future.result()
+                all_performance.append(performance)
+                all_results.append(result)
+
+        # Combine all results into a single DataFrame and return
+        all_results = pd.concat(all_results).reset_index(drop=True)
         return all_performance, all_results
+
