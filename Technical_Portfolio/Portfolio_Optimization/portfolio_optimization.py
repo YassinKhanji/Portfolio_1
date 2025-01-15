@@ -38,6 +38,8 @@ class Portfolio_Optimization():
             raise ValueError("Invalid train, test, or step size.")
         elif train_size < 1 or test_size < 1 or step_size < 1:
             raise ValueError("Train, test, and step size must be greater than 0.")
+        elif step_size < test_size:
+            raise ValueError("Step size must be greater than test size.")
        
         
                             
