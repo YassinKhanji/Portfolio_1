@@ -222,7 +222,7 @@ class Sprtrnd_Breakout():
         tf = Trend_Following()
         #Generate a signal
         print(f'length of data: {len(data)}')
-        print(f'Head of data: {data.head()}')
+        print(f'Data: {data}')
         _df = tf.supertrend_signals(data.copy(), str_length, str_mult)
         print('Signal Generated')
 

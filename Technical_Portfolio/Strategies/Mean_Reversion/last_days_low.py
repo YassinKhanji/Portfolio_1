@@ -221,7 +221,7 @@ class Last_Days_Low():
         mr = Mean_Reversion()
         #Generate a signal
         print(f'length of data: {len(data)}')
-        print(f'Head of data: {data.head()}')
+        print(f'Data: {data}')
         _df = mr.last_days_low(data.copy(), hourly_lookback, daily_lookback)
         print('Signal Generated')
 
