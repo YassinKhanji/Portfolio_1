@@ -217,10 +217,12 @@ class Sprtrnd_Breakout():
         
         #########################
         
+        print('Performing Supertrend Breakout Strategy')
         cal = Calculations()
         tf = Trend_Following()
         #Generate a signal
         print(f'length of data: {len(data)}')
+        print(f'Head of data: {data.head()}')
         _df = tf.supertrend_signals(data.copy(), str_length, str_mult)
         print('Signal Generated')
 
