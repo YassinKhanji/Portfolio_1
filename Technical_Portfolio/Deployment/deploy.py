@@ -28,36 +28,36 @@ from portfolio_risk_management import Portfolio_RM
 
 
 class Deploy():
-    def __init__(self, api_key, api_secret, exchange, halal_symbols, train_size, test_size, step_size, low_corr_thresh, market_data_filename, strategy_data_filename, timeframe, strategy_optimization_frequency, portfolio_optimization_frequency, portfolio_management_frequency):
+    def __init__(self, train_size = 500, test_size = 500, step_size = 500):
         self.api_key = 'yqPWrtVuElaIExKmIp/E/upTOz/to1x7tC3JoFUxoSTKWCOorT6ifF/B'
         self.api_secret = 'L8h5vYoAu/jpQiBROA9yKN41FGwZAGGVF3nfrC5f5EiaoF7VksruPVdD7x1VOwnyyNCMdrGnT8lP4xHTiBrYMQ=='
         self.exchange = ccxt.kraken({
-            'apiKey': api_key,
-            'secret': api_secret
+            'apiKey': self.api_key,
+            'secret': self.api_secret
         })
-        self.train_size = 400
-        self.test_size = 200
-        self.step_size = 200
+        self.train_size = train_size
+        self.test_size = test_size
+        self.step_size = step_size
         self.low_corr_thresh = 1.0
         self.market_data_filename = 'market_data.csv'
         self.strategy_data_filename = 'strategy_returns.csv'
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        data = self.load_data_from_csv(market_data_filename)
+        data = self.load_data_from_csv(self.market_data_filename)
         strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         self.halal_symbols = get_halal_symbols()
-        cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
+        self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
-            'cash_strat': cash_df,
+            'cash_strat': self.cash_df,
             'strat_1': strat_1_instance,
             'strat_2': strat_2_instance
         }
         self.live_strategy_map = {
-            'cash_strat': cash_df,
+            'cash_strat': self.cash_df,
             'strat_1': live_strat_1_instance,
             'strat_2': live_strat_2_instance
         }
@@ -97,16 +97,21 @@ class Deploy():
             balance = self.exchange.fetch_balance()
             return balance['total'][formatted_coin]
         except Exception as e:
-            print(f"Error fetching balance for {coin}: {e}")
+            print(f"Error fetching balance for {formatted_coin}: {e}")
             return None
+        
     
-    def get_coin_allocation(self, coin, current_allocation_latest_row):
-        return current_allocation_latest_row.loc[(slice(None), coin), :][-1]
+    def get_usd_left(self):
+        return self.exchange.fetch_balance()['free']['USD']
             
-    def get_last_row(self, data):
+    def get_last_row(self, data, check_todays_date = False):
         """Get the last date in the dataset."""
-        last_date = data.index.get_level_values("date").max()
-        return data.loc[last_date]
+        if check_todays_date:
+            last_date = data.index.get_level_values("date").unique()[-1]
+            if last_date.date() == dt.datetime.now(dt.UTC).date():
+                return data.loc[last_date]
+            else:
+                return None
             
     def buy(self, to_add, coin):
         try:
@@ -122,14 +127,15 @@ class Deploy():
         except Exception as e:
             print(f"Error: {e}")
             
-    def liquidate(self, symbols):
+    def liquidate(self, symbols_to_liquidate):
         try:
             # Step 1: Get your balances
             balance = self.exchange.fetch_balance()
+            cant_liquidate = ['USD', 'CAD']
 
             # Step 2: Loop through all assets in your balance and sell them
             for coin, coin_balance in balance['free'].items():
-                if coin in symbols:
+                if coin in symbols_to_liquidate and coin not in cant_liquidate:
                     if coin_balance > 0:  # Only sell if you have a non-zero balance
                         print(f"Selling {coin_balance} {coin}...")
 
@@ -187,7 +193,7 @@ class Deploy():
 
     ############ Main Methods ############
     def upload_complete_market_data(self, data_size = 2200):
-        start_time = (dt.datetime.now() - dt.timedelta(hours= (self.train_size + self.test_size) * 4)).date()
+        start_time = (dt.datetime.now() - dt.timedelta(hours= self.max_rows_market_data)).date()
         end_time = dt.datetime.now().date()
         timeframes = ['1w', '1d', '4h', '1h', '30m','15m', '5m', '1m']
         index = 3 #It is better to choose the highest frequency for the backtest to be able to downsample
@@ -245,7 +251,7 @@ class Deploy():
             
         # Append new data to CSV and maintain max length (asynchronous)
     @unsync
-    def append_to_csv_with_limit(self, latest):
+    def append_to_csv_with_limit(self, filename, latest, use_limit = True):
         """_summary_
 
         Args:
@@ -253,7 +259,6 @@ class Deploy():
             filename (_type_): _description_
             max_rows (int, optional): _description_. Defaults to 2202. Should be account for the max number of rows needed for any of the processes
         """
-        filename = self.market_data_filename
         file_exists = os.path.isfile(filename)
         df = pd.DataFrame(latest)
         if file_exists:
@@ -261,7 +266,7 @@ class Deploy():
             if existing_df.index.get_level_values(0).unique()[-1] == df.index.get_level_values(0).unique()[-1]:
                 return
             combined_df = pd.concat([existing_df, df])
-            if len(combined_df) > self.max_rows_market_data:
+            if len(combined_df) > self.max_rows_market_data and use_limit:
                 combined_df = combined_df.iloc[-self.max_rows_market_data:]  # Keep only the last max_rows rows
             combined_df.to_csv(filename)
         else:
@@ -280,15 +285,13 @@ class Deploy():
     
     def perform_portfolio_rm(self):
         
-        current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=['date'], parse_dates=['date'])
+        current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=[0, 1], parse_dates=['date'])
 
         portfolio_returns = np.dot(self.best_weights, current_strategy_returns_df.T)
-        
-        # This will be used to plot the current portfolio 
-        portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
-        portfolio_cumulative_returns.plot()
+        portfolio_returns_series = pd.Series(portfolio_returns)
+        portfolio_returns_series.cumsum().apply(np.exp).plot()
 
-        portfolio_rm_instance = Portfolio_RM(portfolio_returns)
+        portfolio_rm_instance = Portfolio_RM(portfolio_returns_series)
 
         drawdown_limit, in_drawdown = portfolio_rm_instance.drawdown_limit(self.drawdown_threshold)
 
@@ -325,10 +328,6 @@ class Deploy():
                 results_strategy_returns[key] = value.results.strategy
             elif key == 'cash_strat':
                 results_strategy_returns[key] = value.strategy
-                
-        #Get the strategy returns df
-        strategy_returns_df = pd.concat(results_strategy_returns, axis = 1).fillna(0)
-        strategy_returns_df.to_csv('strategy_returns.csv')
         
         return results_strategy_returns
             
@@ -357,7 +356,7 @@ class Deploy():
         """
 
         #Run the optimization to get the strategy parameters
-        for key, value in self.live_strategy_map.items():
+        for key, value in self.strategy_map.items():
             if key != 'cash_strat':
                 value.optimize()
 
@@ -402,7 +401,7 @@ class Deploy():
         
         timeframe = timeframe
         latest = self.fetch_latest_data().result()
-        self.append_to_csv_with_limit(latest).result()
+        self.append_to_csv_with_limit(self.market_data_filename, latest).result()
         data = self.load_data_from_csv()
         
         
@@ -415,8 +414,13 @@ class Deploy():
             if key != 'cash_strat'
         }
         
+        #Append curretn strategy results to the csv file for future analysis
+        current_strategy_results_df = pd.concat(current_strategy_results, axis=1).fillna(0)
+        last_row_current_strategy_results = self.get_last_row(current_strategy_results_df)
+        self.append_to_csv_with_limit(self, self.strategy_data_filename, last_row_current_strategy_results, use_limit = False).result()
+        
         current_allocation_strategy_map = {
-            key: value['current_allocation']
+            key: value['coin_amount_to_bought']
             for key, value in current_strategy_results.items()
             if key != 'cash_strat'
         }
@@ -425,36 +429,55 @@ class Deploy():
         
         current_allocation = self.get_last_row(current_allocation_results_df)
         
-        current_universe = list(
-            set(
-                value.current_universe
-                for value in self.live_selected_strategy.values()
-                if key != 'cash_strat'
-            )
-        )
+        # Extract current universes from selected_strategy
+        current_universes = [
+            set(value.current_universe)  # Convert each universe to a set for comparison
+            for key, value in self.live_selected_strategy.items()
+            if key != 'cash_strat'
+        ]
+
+        # Remove overlaps between universes
+        # Start with the first set and iteratively remove overlaps
+        unique_universes = []
+        for universe in current_universes:
+            for other_universe in unique_universes:
+                universe -= other_universe  # Remove overlapping strings
+            unique_universes.append(universe)
+
+        # Convert sets back to lists (if needed)
+        unique_universes = [list(universe) for universe in unique_universes]
+
+        flattened_universe = [item for sublist in unique_universes for item in sublist]
+
 
         symbols_in_current_balance = self.symbols_in_current_balance()
-        # Find symbols in current balance but not in current universe
-        symbols_not_in_universe = [symbol for symbol in symbols_in_current_balance if symbol not in current_universe]
+        
+        # Ensure symbols_in_current_balance is not None
+        if symbols_in_current_balance:
+            symbols_not_in_universe = [
+                symbol for symbol in symbols_in_current_balance
+                if symbol not in flattened_universe
+            ]
+            print(f"Liquidating {symbols_not_in_universe}...")
+            self.liquidate(symbols_not_in_universe)
+            print("Liquidation complete.")
+        else:
+            print("symbols_in_current_balance is None or empty.")
 
-        # Liquidate the symbols not in the current universe
-        print(f"Liquidating {symbols_not_in_universe}...")
-        self.liquidate(symbols_not_in_universe)
-        print("Liquidation complete.")
-
-        for coin in current_universe:
-            formatted_coin = coin.replace('USDT', '')
+        for coin in flattened_universe:
+            formatted_coin = coin.replace('USDT', '').replace('USD', '')
+            coin_for_order = coin.replace('USDT', '/USD')
             coin_balance = self.get_coin_balance(formatted_coin)
-            current_coin_allocation = self.get_coin_allocation(coin, current_allocation)
+            current_coin_allocation = current_allocation[coin]
             
             to_add = current_coin_allocation - coin_balance
             
-            if to_add > 0:
+            if to_add > 0 and to_add < self.get_usd_left():
                 print(f"Adding {to_add} {formatted_coin} to the portfolio...")
-                self.buy(round(to_add, 2), coin)
-            elif to_add < 0:
+                self.buy(round(to_add, 2), coin_for_order)
+            elif to_add < 0 and coin_balance >= abs(to_add):
                 print(f"Selling {-to_add} {formatted_coin} from the portfolio...")
-                self.sell(round(-to_add, 2), coin)
+                self.sell(round(-to_add, 2), coin_for_order)
             
         
     def main_loop(self):

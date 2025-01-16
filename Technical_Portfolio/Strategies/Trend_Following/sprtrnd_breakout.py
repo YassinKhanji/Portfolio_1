@@ -42,7 +42,7 @@ class Sprtrnd_Breakout():
                             train_size = 2200,
                             test_size = 2200,
                             step_size = 2200,
-                            max_dollar_allocation = 10000):
+                            max_dollar_allocation = 1000):
         self.df = df.copy()
         self.max_universe = max_universe
         self.optimize_fn = optimize_fn
@@ -146,8 +146,7 @@ class Sprtrnd_Breakout():
         df['in_universe'] = df['in_universe'].shift(periods = 1, freq = low_freq)
         df = df.stack(future_stack= True)
         
-        self.current_universe = current_universe
-        return df['in_universe'], self.current_universe
+        return df['in_universe'], current_universe
 
     def trading_strategy(self,
         data,

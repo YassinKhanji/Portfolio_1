@@ -47,9 +47,11 @@ class Manage_Trade():
         Assumes a stacked dataframe with the session compound, session stop loss, and actual allocation calculated
         """
         allocation_for_trade = group['actual_allocation', coin].iloc[0]
+        close_price = group['close', coin].iloc[0]
 
         #Calculate the current allocation
         group['current_allocation', coin] = group['position', coin] *group['session_compound', coin] * allocation_for_trade
+        group['coin_amount_to_bought', coin] = allocation_for_trade / close_price
 
         #The reason why we are doing the above, is because position can be any number between 0 and 1 if we have taken partials during the trade
         # depending on the strategy used. So we need to multiply the position by the actual allocation to get the current allocation.
