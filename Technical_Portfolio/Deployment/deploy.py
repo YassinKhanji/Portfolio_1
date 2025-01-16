@@ -44,6 +44,7 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
+        self.upload_complete_market_data()
         data = self.load_data_from_csv(self.market_data_filename)
         strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
@@ -72,8 +73,8 @@ class Deploy():
         self.live_selected_strategy = None
         self.data_instance = None
         self.drawdown_threshold = -0.15
-        self.max_rows_market_data = self.market_data_size = 2000
-        self.length_of_data_to_run_strategy = 100 
+        self.max_rows_market_data = self.market_data_size = 4400
+        self.length_of_data_to_run_strategy = 5000 #Accounting for the many coins we have
         
     
     ############ Helper Methods ############
@@ -209,8 +210,8 @@ class Deploy():
             complete_data = pd.concat([data, missing_data])
             
         complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
-        complete_data.to_csv('market_data.csv')
-        print('Market data updated successfully')    
+        complete_data.to_csv(self.market_data_filename)
+        print('Market data updated successfully')
 
     @unsync
     def fetch_latest_data(self, limit=2):
