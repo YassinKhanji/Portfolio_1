@@ -35,7 +35,7 @@ class Deploy():
             'apiKey': api_key,
             'secret': api_secret
         })
-        self.train_size = 440
+        self.train_size = 400
         self.test_size = 200
         self.step_size = 200
         self.low_corr_thresh = 1.0
