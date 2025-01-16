@@ -57,7 +57,7 @@ class WFO():
         )
 
         if step_size + train_size + test_size > len(data):
-            raise ValueError("Invalid train, test, or step size. Length of Data: ", len(data))
+            raise ValueError("Invalid train, test, or step size. Length of Data: ", len(data), step_size, train_size, test_size)
         elif (train_size < max_param or test_size < max_param):
             raise ValueError("Parameter range exceeds train size or Test size.")
         elif train_size < 1 or test_size < 1 or step_size < 1:
