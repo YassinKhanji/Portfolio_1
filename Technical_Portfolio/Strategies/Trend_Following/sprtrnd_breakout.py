@@ -310,7 +310,7 @@ class Sprtrnd_Breakout():
                     live = self.live)
         
         test_size = self.test_size if test else 0
-        self.train_data = self.df.iloc[-self.train_size + test_size:]
+        self.train_data = self.df.unstack().iloc[-(self.train_size + test_size):].stack(future_stack = True)
         self.best_params = wfo.optimize_parameters_gp(self.train_data, self.param_space)
 
         if test:
