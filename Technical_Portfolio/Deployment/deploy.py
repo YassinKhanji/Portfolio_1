@@ -48,7 +48,8 @@ class Deploy():
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-        self.symbols_to_trade = get_symbols_for_bot()
+        # self.symbols_to_trade = get_symbols_for_bot()
+        self.symbols_to_trade = ['BTCUSD']
         self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
             'cash_strat': self.cash_df,
@@ -179,6 +180,19 @@ class Deploy():
     def filter_halal_df(self, data):
         return data[data.index.get_level_values("coin").isin(self.symbols_to_trade)]
     
+    def complete_missing_data(self, data):
+        last_date_data = data.index.get_level_values(0).unique()[-1].tz_localize('UTC')
+        if dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) != last_date_data:
+            time_difference = dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - last_date_data
+            hours_difference = time_difference.total_seconds() / 3600 # Get the number of hours
+            missing_data = self.fetch_latest_data(limit = int(hours_difference) + 1)
+            complete_data = pd.concat([data, missing_data])
+            
+        complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
+        complete_data.to_csv('market_data.csv')
+        print('Market data updated successfully')
+        
+    
 
     ############ Main Methods ############
     def upload_complete_market_data(self, data_size = 2200):
@@ -189,17 +203,8 @@ class Deploy():
         interval = timeframes[index]
         self.data_instance = Data(self.symbols_to_trade, interval, start_time, end_time, exchange = 'kraken')
         data = self.data_instance.df
-        last_date_data = data.index.get_level_values(0).unique()[-1].tz_localize('UTC')
         
-        if dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) != last_date_data:
-            time_difference = dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - last_date_data
-            hours_difference = time_difference.total_seconds() / 3600 # Get the number of hours
-            missing_data = self.fetch_latest_data(limit = int(hours_difference) + 1)
-            complete_data = pd.concat([data, missing_data])
-            
-        complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
-        complete_data.to_csv('market_data.csv')
-        print('Market data updated successfully')    
+        self.complete_missing_data(data)
 
     def fetch_latest_data(self, limit=2):
         """Fetch latest OHLCV data for multiple symbols and stack them into a single DataFrame."""
@@ -523,6 +528,9 @@ class Deploy():
             
             print('Adding to counter')
             self.counter += 1
+            
+            data = pd.read_csv(self.market_data_filename, index_col=[0, 1], parse_dates=['date'])
+            self.complete_missing_data(data)
 
             if self.perform_portfolio_rm():
                 print('Performed portfolio risk management, portfolio is in drawdown')
