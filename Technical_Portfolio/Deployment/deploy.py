@@ -49,7 +49,6 @@ class Deploy():
         live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         self.symbols_to_trade = get_symbols_for_bot()
-        # self.symbols_to_trade = ['BTCUSD']
         self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
             'cash_strat': self.cash_df,
