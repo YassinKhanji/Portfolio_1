@@ -299,9 +299,10 @@ class Deploy():
     
     def perform_portfolio_rm(self):
         
-        current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=[0, 1], parse_dates=['date'])
+        if os.path.isfile(self.strategy_data_filename):
+            current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=[0, 1], parse_dates=['date'])
 
-        if current_strategy_returns_df.empty:
+        if current_strategy_returns_df.empty or len(current_strategy_returns_df) < self.train_size + self.test_size:
             return False
         portfolio_returns = np.dot(self.best_weights, current_strategy_returns_df.T)
         portfolio_returns_series = pd.Series(portfolio_returns)
