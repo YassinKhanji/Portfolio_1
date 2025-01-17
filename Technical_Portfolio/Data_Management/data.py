@@ -101,7 +101,7 @@ class Data:
         """Prepare data for analysis."""
         _df = df.copy()
         for coin in df.columns.levels[1]:
-            _df['returns', coin] = _df['close', coin].pct_change()
+            _df['returns', coin] = _df['close', coin].pct_change(fill_method=None)
             _df['log_return', coin] = np.log(_df['returns', coin] + 1)
             _df["creturns", coin] = _df["log_return", coin].cumsum().apply(np.exp)
             _df['price', coin] = _df['close', coin]

@@ -224,7 +224,7 @@ class Deploy():
                     df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                     df.set_index('timestamp', inplace=True)
-                    df['coin'] = formatted_symbol
+                    df['coin'] = symbol
                     return df
                 except Exception as e:
                     print(f"Error fetching data for {symbol} on retry: {e}")
