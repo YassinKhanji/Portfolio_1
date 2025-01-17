@@ -214,7 +214,7 @@ class Deploy():
                 df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df.set_index('timestamp', inplace=True)
-                df['coin'] = symbol
+                df['coin'] = formatted_symbol
                 return df
             except Exception as e:
                 print(f"Error fetching data for {symbol}: {e}")
@@ -224,7 +224,7 @@ class Deploy():
                     df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                     df.set_index('timestamp', inplace=True)
-                    df['coin'] = symbol
+                    df['coin'] = formatted_symbol
                     return df
                 except Exception as e:
                     print(f"Error fetching data for {symbol} on retry: {e}")
@@ -242,7 +242,7 @@ class Deploy():
             stacked_df = stacked_df[~stacked_df.index.duplicated()]  # Remove duplicates
             df = self.data_instance.prepare_data(stacked_df.unstack())
             df.reset_index(level = 1, inplace = True)
-            df['coin'] = df['coin'].str.replace('/USD', 'USDT', regex=False)
+            df['coin'] = df['coin'].str.replace('/USD', 'USDT', regex=False).replace('USD', 'USDT', regex=False)
             df.set_index('coin', append = True, inplace = True)
             return df
         else:
