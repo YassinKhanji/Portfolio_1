@@ -30,5 +30,4 @@ async def main():
     else:
         await send_telegram_message("Script completed successfully.")
 
-if __name__ == "__main__":
-    main().result()  
+main().result()  
