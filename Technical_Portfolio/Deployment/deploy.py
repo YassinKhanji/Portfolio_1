@@ -543,7 +543,7 @@ class Deploy():
             #Perform the strategy after each hour
             now = dt.datetime.now()
             print('Current time: ', now)
-            next_hour = (now + dt.timedelta(minutes=1)).replace(second=0, microsecond=0)
+            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
             print('Next hour: ', next_hour)
             sleep_duration = (next_hour - now).total_seconds()
             print('Sleep duration: ', sleep_duration)
