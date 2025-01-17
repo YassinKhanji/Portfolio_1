@@ -7,6 +7,7 @@ import os
 from functools import reduce
 from fetch_symbols import get_symbols
 import ccxt
+import random
 
 
 class Data:
@@ -203,9 +204,9 @@ class CSV_Data:
         df.to_csv('all_data.csv')
     
     
-def get_halal_symbols():
-    """Get the halal symbols from the file."""
-    halal_symbols = ['BONKUSD','ETHWUSD','OXTUSD','BLZUSD','LINKUSD','AKTUSD','RADUSD','LUNAUSD','TRACUSD','DOTUSD',
+def get_symbols_for_bot():
+    """Get the symbols for the bot to trade"""
+    symbols = ['BONKUSD','ETHWUSD','OXTUSD','BLZUSD','LINKUSD','AKTUSD','RADUSD','LUNAUSD','TRACUSD','DOTUSD',
                      'OMNIUSD','XRTUSD','APUUSD','ZECUSD','QTUMUSD','AVAXUSD','PSTAKEUSD','SHIBUSD','ATHUSD','DENTUSD',
                      'PUFFERUSD','INTRUSD','KASUSD','STORJUSD','L3USD','CTSIUSD','STGUSD','RLCUSD','GMTUSD','OCEANUSD',
                      'IMXUSD','MEWUSD','ENJUSD','FXSUSD','TEERUSD','BCHUSD','COTIUSD','NEIROUSD','AGLDUSD','FTMUSD',
@@ -221,7 +222,7 @@ def get_halal_symbols():
                      'SAFEUSD','JASMYUSD','API3USD','AUDIOUSD','SEIUSD','PONDUSD','ICPUSD','RAREUSD','PHAUSD','SAMOUSD',
                      'TREMPUSD','ALTUSD','MULTIUSD','GRTUSD','WENUSD','GIGAUSD','TURBOUSD','FWOGUSD','HNTUSD','BANDUSD',
                      'MOGUSD','ZKUSD','SWELLUSD','ALGOUSD','MOODENGUSD']
-    return halal_symbols
+    return random.sample(symbols, 50)
 
     
 

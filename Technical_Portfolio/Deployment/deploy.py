@@ -17,8 +17,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'S
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Mean_Reversion')))
 
 # Import the modules
-from data import Data, get_halal_symbols
-from fetch_symbols import get_symbols
+from data import Data, get_symbols_for_bot
 from sprtrnd_breakout import Sprtrnd_Breakout
 from last_days_low import Last_Days_Low
 from portfolio_management import Portfolio_Management
@@ -49,7 +48,7 @@ class Deploy():
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-        self.halal_symbols = get_halal_symbols()
+        self.symbols_to_trade = get_symbols_for_bot()
         self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
             'cash_strat': self.cash_df,
@@ -178,7 +177,7 @@ class Deploy():
         return [symbol.replace("USD", "/USD") for symbol in symbols]
 
     def filter_halal_df(self, data):
-        return data[data.index.get_level_values("coin").isin(self.halal_symbols)]
+        return data[data.index.get_level_values("coin").isin(self.symbols_to_trade)]
     
 
     ############ Main Methods ############
@@ -188,7 +187,7 @@ class Deploy():
         timeframes = ['1w', '1d', '4h', '1h', '30m','15m', '5m', '1m']
         index = 3 #It is better to choose the highest frequency for the backtest to be able to downsample
         interval = timeframes[index]
-        self.data_instance = Data(self.halal_symbols, interval, start_time, end_time, exchange = 'kraken')
+        self.data_instance = Data(self.symbols_to_trade, interval, start_time, end_time, exchange = 'kraken')
         data = self.data_instance.df
         last_date_data = data.index.get_level_values(0).unique()[-1].tz_localize('UTC')
         
@@ -205,7 +204,7 @@ class Deploy():
     def fetch_latest_data(self, limit=2):
         """Fetch latest OHLCV data for multiple symbols and stack them into a single DataFrame."""
         
-        formatted_symbols = self.format_symbols(self.halal_symbols)
+        formatted_symbols = self.format_symbols(self.symbols_to_trade)
         
         def fetch_symbol_data(symbol, formatted_symbol):
             """Fetch data for a single symbol and return a DataFrame."""
@@ -232,7 +231,7 @@ class Deploy():
 
         # Use ThreadPoolExecutor for parallel requests
         with ThreadPoolExecutor(max_workers=16) as executor:  # Adjust workers based on CPU
-            results = list(executor.map(fetch_symbol_data, self.halal_symbols, formatted_symbols))
+            results = list(executor.map(fetch_symbol_data, self.symbols_to_trade, formatted_symbols))
 
         # Concatenate all DataFrames and set multi-level index
         data_frames = [df for df in results if not df.empty]
