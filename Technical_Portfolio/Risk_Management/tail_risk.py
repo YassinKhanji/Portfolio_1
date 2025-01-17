@@ -135,7 +135,6 @@ class Stop_Loss():
         """
 
         _df = self.df.copy()
-        print('Length of df at the start of the method', len(_df))
         
         #Calculate the ATR indicator
         if self.sl_type.lower() == 'supertrend':
@@ -143,7 +142,7 @@ class Stop_Loss():
         elif self.sl_type.lower() == 'atr':
             #unstack dataframe
             _df = _df.copy().unstack()
-            print('Length of df after unstacking', len(_df))
+            
             
             if not any('atr'.lower() in col.lower() for col in _df.columns.get_level_values(0)):
                 #Calculate the ATR indicator
@@ -157,7 +156,6 @@ class Stop_Loss():
                     #future to remove the largest length needed for the calculations as this would be essential to warm up the data needed.
                 
             #Calculate the stop loss
-            print('Length of df before stacking', len(_df))
             _df = _df.stack(future_stack = True)
             _df['stop_loss'] = _df['close'] - self.sl_mult * _df['atr']
             
@@ -171,10 +169,7 @@ class Stop_Loss():
         ####Everything that comes after this is common for all fixed stop losses (percentage, dollar, indicator based, ...)#####
 
         #Unstack the dataframe
-        print('Length of df before unstacking', len(_df))
-        print(_df.columns)
         _df = _df.unstack()
-        print(len(_df))
         #Calculate the session stop loss
         for coin in _df.columns.levels[1]:
             _df['session_stop_loss', coin] = _df['stop_loss', coin].groupby(_df['session', coin]).transform('first')
