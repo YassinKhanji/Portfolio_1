@@ -49,8 +49,7 @@ class Deploy():
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-        # self.halal_symbols = get_halal_symbols()
-        self.halal_symbols = ['BTCUSD', 'ETHUSD']
+        self.halal_symbols = get_halal_symbols()
         self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
             'cash_strat': self.cash_df,
