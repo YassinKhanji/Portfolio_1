@@ -301,6 +301,9 @@ class Deploy():
         
         if os.path.isfile(self.strategy_data_filename):
             current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=[0, 1], parse_dates=['date'])
+        else:
+            return False
+
 
         if current_strategy_returns_df.empty or len(current_strategy_returns_df) < self.train_size + self.test_size:
             return False
@@ -493,8 +496,8 @@ class Deploy():
             coin_balance = self.get_coin_balance(formatted_coin)
             current_coin_allocation = current_allocation[coin]
             
-            # to_add = round(current_coin_allocation - coin_balance, 7)
-            to_add = self.get_usd_left() / 2 #Just to test
+            to_add = round(current_coin_allocation - coin_balance, 7)
+            
             
             if to_add > 0 and to_add < self.get_usd_left():
                 print(f"Adding {to_add} {formatted_coin} to the portfolio...")

@@ -21,8 +21,8 @@ async def send_telegram_message(message):
 async def main():
     try:
         # Your script's main code here
-        Deploy.upload_complete_market_data()
-        Deploy.main_loop()
+        Deploy().upload_complete_market_data()
+        Deploy().main_loop()
     except Exception as e:
         error_message = f"An error occurred:\n\n{traceback.format_exc()}"
         print(error_message)  # Print to console for local debugging
