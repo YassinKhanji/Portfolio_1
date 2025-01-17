@@ -3,7 +3,6 @@ import datetime as dt
 import pandas as pd
 import quantstats_lumi as qs
 import math
-import vectorbt as vbt
 import yfinance as yf
 
 class Calculations():
@@ -278,7 +277,7 @@ class Metrics():
         This function should be used to get the benchmark return
         """
         # Download historical data (e.g., S&P 500)
-        benchmark_data = vbt.YFData.download('^GSPC', start='2000-01-01', end='2023-12-31')
+        benchmark_data = yf.download('^GSPC', start='2000-01-01', end='2023-12-31')
         prices = benchmark_data.get('Close')
         returns = prices.pct_change().dropna()
         return qs.stats.cagr(returns)
