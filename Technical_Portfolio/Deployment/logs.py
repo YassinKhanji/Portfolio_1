@@ -33,7 +33,7 @@ async def monitor_log_file(file_path):
             while True:
                 line = file.readline()
                 if line:
-                    await send_telegram_message(line.strip())  # Send each new log line
+                    await send_telegram_logs(line.strip())  # Send each new log line
                 else:
                     await asyncio.sleep(1)  # Wait for new log entries
     except FileNotFoundError:
