@@ -48,8 +48,8 @@ class Deploy():
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
         live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-        # self.symbols_to_trade = get_symbols_for_bot()
-        self.symbols_to_trade = ['BTCUSD']
+        self.symbols_to_trade = get_symbols_for_bot()
+        # self.symbols_to_trade = ['BTCUSD']
         self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
         self.strategy_map = {
             'cash_strat': self.cash_df,
@@ -187,11 +187,9 @@ class Deploy():
             hours_difference = time_difference.total_seconds() / 3600 # Get the number of hours
             missing_data = self.fetch_latest_data(limit = int(hours_difference) + 1)
             complete_data = pd.concat([data, missing_data])
-            
-        complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
-        complete_data.to_csv('market_data.csv')
-        print('Market data updated successfully')
-        
+            complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
+            complete_data.to_csv('market_data.csv')
+            print('Market data updated successfully')
     
 
     ############ Main Methods ############
