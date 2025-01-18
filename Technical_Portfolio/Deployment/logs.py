@@ -5,6 +5,11 @@ import os
 from unsync import unsync
 from deploy import Deploy
 
+"""
+This python script is specifically used to monitor errors and send it to a telegram bot.
+"""
+
+
 BOT_TOKEN = '8001920272:AAGR92ZAnH_QUg2eenhKyRSInfqKGMwlNlc'
 CHAT_ID = '2103748257'
 
