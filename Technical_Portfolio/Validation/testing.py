@@ -263,7 +263,7 @@ class WFO():
         
         if self.live:
             x_values = []
-            for _ in range(5):
+            for _ in range(2):
                 result = gp_minimize(objective, param_space, n_calls=10)
                 x_values.append(result.x)
 
