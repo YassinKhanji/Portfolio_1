@@ -43,6 +43,7 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
+        self.upload_complete_market_data()
         data = self.load_data_from_csv()
         strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)

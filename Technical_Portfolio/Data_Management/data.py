@@ -11,7 +11,7 @@ import random
 
 
 class Data:
-    def __init__(self, symbols, interval = '1h', start_time = dt.datetime(2020, 1, 1), end_time = dt.datetime(2020, 1, 2), get_data = True,
+    def __init__(self, symbols, interval = '1h', start_time = dt.datetime(2024, 7, 1), end_time = dt.datetime(2025, 1, 2), get_data = True,
                  exchange = 'binance'):
         self.symbols = symbols
         self.interval = interval
