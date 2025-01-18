@@ -51,32 +51,34 @@ class Deploy():
         self.drawdown_threshold = -0.15
         self.max_rows_market_data = self.market_data_size = 2000
         self.length_of_data_to_run_strategy = 500
-        reset_symbols_threshold = 2000
+        reset_symbols_threshold = 750 #Get new symbols every month
         self.market_data_filename = 'market_data.csv'
         self.strategy_data_filename = 'strategy_returns.csv'
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        if self.counter % reset_symbols_threshold == 0:
-            self.symbols_to_trade = get_symbols_for_bot()
-            # self.symbols_to_trade = ['BTCUSD', 'MASKUSD', 'CELRUSD', 'FILUSD', 'FLOWUSD', 'FORTHUSD', 'FTMUSD', 'IMXUSD', 'LUNAUSD']
-            self.upload_complete_market_data()
-            data = self.load_data_from_csv()
-            strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
-            strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
-            live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-            live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-            self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
-            self.strategy_map = {
-                'cash_strat': self.cash_df,
-                'strat_1': strat_1_instance,
-                'strat_2': strat_2_instance
-            }
-            self.live_strategy_map = {
-                'cash_strat': self.cash_df,
-                'strat_1': live_strat_1_instance,
-                'strat_2': live_strat_2_instance
-            }
+        self.symbols_to_trade = get_symbols_for_bot()[:1]
+        # self.symbols_to_trade = ['BTCUSD', 'MASKUSD', 'CELRUSD', 'FILUSD', 'FLOWUSD', 'FORTHUSD', 'FTMUSD', 'IMXUSD', 'LUNAUSD']
+        print('Uploading Data First')
+        self.upload_complete_market_data()
+        print('Data Uploaded, Now Loading Data')
+        data = self.load_data_from_csv()
+        print('Data Loaded')
+        strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
+        strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
+        live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
+        live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
+        self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
+        self.strategy_map = {
+            'cash_strat': self.cash_df,
+            'strat_1': strat_1_instance,
+            'strat_2': strat_2_instance
+        }
+        self.live_strategy_map = {
+            'cash_strat': self.cash_df,
+            'strat_1': live_strat_1_instance,
+            'strat_2': live_strat_2_instance
+        }
             
         
     ############ Helper Methods ############
@@ -98,7 +100,11 @@ class Deploy():
     def get_coin_balance(self, formatted_coin):
         try:
             balance = self.exchange.fetch_balance()
-            return balance['total'][formatted_coin] if balance['total'][formatted_coin] is not None else 0
+            coin_balance= balance['total'][formatted_coin]
+            if coin_balance is not None:
+                return coin_balance
+            else:
+                return 0
         except Exception as e:
             print(f"Error fetching balance for {formatted_coin}: {e}")
             return None
@@ -413,7 +419,10 @@ class Deploy():
     def run_strategy(self):
         #Get the current_total_balance
         current_total_balance = self.get_portfolio_value()
-
+        
+        
+        print(f"Best Weights: {self.best_weights}")
+        print(f"Current Total Balance: {current_total_balance}")
         #Store the max allocation for each strategy in a dictionary
         max_allocation_map = {
             key: self.best_weights[i] * current_total_balance / strategy.max_universe
@@ -421,6 +430,7 @@ class Deploy():
             if i < len(self.best_weights) and self.best_weights[i] > 0 and key != 'cash_strat'
         }
 
+        print(f'Max_allocation_map: {max_allocation_map}')
         #Rebuild the strategy map, with the updated max_allocation for each strategy
         for key, value in self.live_selected_strategy.items():
             if key != 'cash_strat':
@@ -504,6 +514,8 @@ class Deploy():
             coin_balance = self.get_coin_balance(formatted_coin)
             current_coin_allocation = current_allocation[coin]
             
+            print(f'Current coin allocation: {current_coin_allocation}')
+            print(f'Coin balance: {coin_balance}')
             to_add = round(current_coin_allocation - coin_balance, 7)
             
             
@@ -554,7 +566,7 @@ class Deploy():
             #Perform the strategy after each hour
             now = dt.datetime.now()
             print('Current time: ', now)
-            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
+            next_hour = (now + dt.timedelta(minutes=1)).replace(second=0, microsecond=0)
             print('Next hour: ', next_hour)
             sleep_duration = (next_hour - now).total_seconds()
             print('Sleep duration: ', sleep_duration)
