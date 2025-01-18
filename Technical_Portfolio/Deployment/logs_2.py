@@ -53,16 +53,31 @@ async def monitor_log_file(log_file_path):
                 await send_telegram_message(line.strip())
             else:
                 await asyncio.sleep(1)  # Sleep a bit before checking for new lines
+                
+async def periodic_summary(log_file_path):
+    """Send a summary of the log file every 6 hours."""
+    while True:
+        await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
+        try:
+            with open(log_file_path, "r", encoding="utf-8", errors="ignore") as log_file:
+                # Optionally, read the last N lines instead of the entire file
+                log_content = log_file.read()
+                summary_message = f"Periodic Summary (last 6 hours):\n\n{log_content}"
+                await send_telegram_message(summary_message)
+        except Exception as e:
+            print(f"Error sending periodic summary: {e}")
 
 async def main():
     try:
-        # Start log monitoring as a background task
+        # Start real-time log monitoring
         asyncio.create_task(monitor_log_file(log_file_path))
-
-        # Run continuously without waiting
+        
+        # Start periodic summaries
+        asyncio.create_task(periodic_summary(log_file_path))
+        
+        # Keep the main loop alive
         while True:
             await asyncio.sleep(0)
-
     except Exception as e:
         error_message = f"An error occurred:\n\n{e}"
         print(error_message)
