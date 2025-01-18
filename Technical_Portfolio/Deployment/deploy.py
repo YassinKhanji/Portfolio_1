@@ -57,8 +57,8 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        self.symbols_to_trade = get_symbols_for_bot()[:1]
-        # self.symbols_to_trade = ['BTCUSD', 'MASKUSD', 'CELRUSD', 'FILUSD', 'FLOWUSD', 'FORTHUSD', 'FTMUSD', 'IMXUSD', 'LUNAUSD']
+        # self.symbols_to_trade = get_symbols_for_bot()[:1]
+        self.symbols_to_trade = ['ALGOUSD']
         print('Uploading Data First')
         self.upload_complete_market_data()
         print('Data Uploaded, Now Loading Data')
@@ -423,10 +423,13 @@ class Deploy():
         
         print(f"Best Weights: {self.best_weights}")
         print(f"Current Total Balance: {current_total_balance}")
+        print(f"Live Selected Strategy: {self.live_selected_strategy}")
+        print(f'Selected Strategy: {self.selected_strategy}')
+        print(f'Live Strategy Map: {self.live_strategy_map}')
         #Store the max allocation for each strategy in a dictionary
         max_allocation_map = {
             key: self.best_weights[i] * current_total_balance / strategy.max_universe
-            for i, (key, strategy) in enumerate(self.selected_strategy.items())
+            for i, (key, strategy) in enumerate(self.live_selected_strategy.items())
             if i < len(self.best_weights) and self.best_weights[i] > 0 and key != 'cash_strat'
         }
 
@@ -434,8 +437,9 @@ class Deploy():
         #Rebuild the strategy map, with the updated max_allocation for each strategy
         for key, value in self.live_selected_strategy.items():
             if key != 'cash_strat':
-                value.max_dollar_allocation = max_allocation_map[key]
-                
+                value.max_dollar_allocation = max_allocation_map.get(key, 0)
+                print(f"Max Dollar Allocation for {key}: {value.max_dollar_allocation}")
+            
         latest = self.fetch_latest_data()
         self.append_to_csv_with_limit(self.market_data_filename, latest)
         data = self.load_data_from_csv()
@@ -508,11 +512,15 @@ class Deploy():
         else:
             print("symbols_in_current_balance is None or empty.")
 
+        print(f'Current_universe: {flattened_universe}')
         for coin in flattened_universe:
             formatted_coin = coin.replace('USDT', '').replace('USD', '')
             coin_for_order = coin.replace('USDT', '/USD')
             coin_balance = self.get_coin_balance(formatted_coin)
             current_coin_allocation = current_allocation[coin]
+            
+            if coin_balance is None:
+                coin_balance = 0
             
             print(f'Current coin allocation: {current_coin_allocation}')
             print(f'Coin balance: {coin_balance}')
