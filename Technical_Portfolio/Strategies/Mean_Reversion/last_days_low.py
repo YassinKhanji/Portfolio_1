@@ -221,8 +221,9 @@ class Last_Days_Low():
         mr = Mean_Reversion()
         #Generate a signal
         print(f'length of data: {len(data)}')
+        print(f'Data Head: {data.head(30)}')
         print(f'Data Head: {data.unstack().head(30)}')
-        print(f'Data Tail: {data.unstack().tail(30)}')
+        print(f'NaN Columns: {data.columns[data.isnull().all()]}')
         _df = mr.last_days_low(data.copy(), hourly_lookback, daily_lookback)
         print('Signal Generated')
 
