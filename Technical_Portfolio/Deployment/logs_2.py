@@ -2,15 +2,13 @@ import asyncio
 import os
 from telegram import Bot
 
-"""
-This python script is used to monitor logs and send it to a telegram bot.
-"""
-
 BOT_TOKEN = '7405668846:AAGqXKChZ54tmqwA6RoK4tbaD90yiAA3WHw'
+BOT_TOKEN_2 = '7675688949:AAFa9zQz5zw1Q9J_082Vt7NsLNvpooGvffE'
 CHAT_ID = '2103748257'
 
 log_file_path = r"/home/yassi/Portfolio_1/Technical_Portfolio/Deployment/output.log"
 bot = Bot(token=BOT_TOKEN)
+bot_2 = Bot(token = BOT_TOKEN_2)
 
 async def send_telegram_message(message):
     try:
@@ -21,7 +19,15 @@ async def send_telegram_message(message):
             message = message[max_message_length:]
         await bot.send_message(chat_id=CHAT_ID, text=message)
     except Exception as e:
-        print(f"Error sending Telegram message: {e}")
+        print(f"Error sending Telegram message: {e}, sending to backup bot.")
+        try:
+            max_message_length = 4096  # Telegram's max message length
+            while len(message) > max_message_length:
+                await bot_2.send_message(chat_id=CHAT_ID, text=message[:max_message_length])
+                message = message[max_message_length:]
+            await bot_2.send_message(chat_id=CHAT_ID, text=message)
+        except Exception as e:
+            print(f"Error sending Telegram message with backup bot: {e}")
 
 async def monitor_log_file(log_file_path):
     if not os.path.exists(log_file_path):
@@ -29,7 +35,7 @@ async def monitor_log_file(log_file_path):
         return
 
     # Open the log file for reading
-    with open(log_file_path, "r") as log_file:
+    with open(log_file_path, "r", encoding="utf-8", errors="ignore") as log_file:
         # Read the entire file content first (for existing content)
         existing_content = log_file.read()
         if existing_content:
@@ -55,7 +61,7 @@ async def main():
 
         # Run continuously without waiting
         while True:
-            await asyncio.sleep(0)  # Yield control to allow other tasks to run (no delay)
+            await asyncio.sleep(0)
 
     except Exception as e:
         error_message = f"An error occurred:\n\n{e}"
