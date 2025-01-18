@@ -32,7 +32,10 @@ class Deploy():
         self.api_secret = 'L8h5vYoAu/jpQiBROA9yKN41FGwZAGGVF3nfrC5f5EiaoF7VksruPVdD7x1VOwnyyNCMdrGnT8lP4xHTiBrYMQ=='
         self.exchange = ccxt.kraken({
             'apiKey': self.api_key,
-            'secret': self.api_secret
+            'secret': self.api_secret,
+            'options': {
+                'defaultType': 'spot',  # Ensure only spot markets are considered
+            }
         })
         self.train_size = train_size
         self.test_size = test_size
@@ -57,9 +60,9 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        # self.symbols_to_trade = get_symbols_for_bot()[:1]
-        self.symbols_to_trade = ['ALGOUSD']
-        print('Uploading Data First')
+        # self.symbols_to_trade = get_symbols_for_bot()[:25]
+        self.symbols_to_trade = ['BADGERUSD']
+        print(f"Uploading Data First for {len(self.symbols_to_trade)} symbols")
         self.upload_complete_market_data()
         print('Data Uploaded, Now Loading Data')
         data = self.load_data_from_csv()
@@ -151,29 +154,28 @@ class Deploy():
 
         except Exception as e:
             print(f"Error: {e}")
-    
+            
     def get_portfolio_value(self):
         try:
             # Fetch account balances
             balances = self.exchange.fetch_balance()
-
             # Fetch tickers to get the latest prices
             tickers = self.exchange.fetch_tickers()
-
-            # Calculate portfolio value in USD (or another base currency)
+            # Initialize portfolio value
             portfolio_value = 0.0
 
             for currency, balance in balances['total'].items():
                 if balance > 0:
                     if currency == "USD":
-                        # Add USD cash directly to portfolio value
                         portfolio_value += balance
                     else:
-                        # Use the USD pair or the most liquid market
                         pair = f"{currency}/USD"
-                        if pair in tickers:
-                            price = tickers[pair]['last']
-                            portfolio_value += balance * price
+                        if pair in self.exchange.markets:
+                            market = self.exchange.markets[pair]
+                            if market['type'] == 'spot':  # Ensure it's a spot market
+                                price = tickers[pair]['last']
+                                portfolio_value += balance * price
+
             return round(portfolio_value, 2)
 
         except ccxt.BaseError as e:
