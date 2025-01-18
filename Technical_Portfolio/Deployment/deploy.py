@@ -11,10 +11,10 @@ import re
 import warnings
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Portfolio_Optimization')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Trend_Following')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Mean_Reversion')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Portfolio_Optimization')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Trend_Following')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Mean_Reversion')))
 
 # Import the modules
 from data import Data, get_symbols_for_bot
@@ -188,6 +188,10 @@ class Deploy():
             complete_data = pd.concat([data, missing_data])
             complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
             complete_data.to_csv('market_data.csv')
+            print('Market data updated successfully')
+        else:
+            print('No missing data')
+            data.to_csv('market_data.csv')
             print('Market data updated successfully')
     
 
