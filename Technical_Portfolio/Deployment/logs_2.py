@@ -57,7 +57,7 @@ async def monitor_log_file(log_file_path):
 async def periodic_summary(log_file_path):
     """Send a summary of the log file every 6 hours."""
     while True:
-        await asyncio.sleep(6 * 60 * 60)  # Wait 6 hours
+        await asyncio.sleep(15 * 60)  # Wait 6 hours
         try:
             with open(log_file_path, "r", encoding="utf-8", errors="ignore") as log_file:
                 # Optionally, read the last N lines instead of the entire file
