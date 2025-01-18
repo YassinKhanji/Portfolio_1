@@ -38,29 +38,6 @@ class Deploy():
         self.test_size = test_size
         self.step_size = step_size
         self.low_corr_thresh = 1.0
-        self.market_data_filename = 'market_data.csv'
-        self.strategy_data_filename = 'strategy_returns.csv'
-        self.timeframe = '1h'
-        self.best_params = None
-        self.best_weights = None
-        self.upload_complete_market_data()
-        data = self.load_data_from_csv()
-        strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
-        strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
-        live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-        live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
-        self.symbols_to_trade = get_symbols_for_bot()
-        self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
-        self.strategy_map = {
-            'cash_strat': self.cash_df,
-            'strat_1': strat_1_instance,
-            'strat_2': strat_2_instance
-        }
-        self.live_strategy_map = {
-            'cash_strat': self.cash_df,
-            'strat_1': live_strat_1_instance,
-            'strat_2': live_strat_2_instance
-        }
         self.strategy_optimization_frequency = self.step_size
         self.portfolio_optimization_frequency = 300 #Every 2 Weeks
         self.portfolio_management_frequency = 4400 #Around 6 months
@@ -74,6 +51,30 @@ class Deploy():
         self.drawdown_threshold = -0.15
         self.max_rows_market_data = self.market_data_size = 2000
         self.length_of_data_to_run_strategy = 500
+        self.market_data_filename = 'market_data.csv'
+        self.strategy_data_filename = 'strategy_returns.csv'
+        self.timeframe = '1h'
+        self.best_params = None
+        self.best_weights = None
+        self.symbols_to_trade = get_symbols_for_bot()
+        # self.symbols_to_trade = ['BTCUSD', 'MASKUSD', 'CELRUSD', 'FILUSD', 'FLOWUSD', 'FORTHUSD', 'FTMUSD', 'IMXUSD', 'LUNAUSD']
+        self.upload_complete_market_data()
+        data = self.load_data_from_csv()
+        strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
+        strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
+        live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
+        live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
+        self.cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
+        self.strategy_map = {
+            'cash_strat': self.cash_df,
+            'strat_1': strat_1_instance,
+            'strat_2': strat_2_instance
+        }
+        self.live_strategy_map = {
+            'cash_strat': self.cash_df,
+            'strat_1': live_strat_1_instance,
+            'strat_2': live_strat_2_instance
+        }
         
     
     ############ Helper Methods ############
