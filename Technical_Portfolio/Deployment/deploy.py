@@ -7,7 +7,6 @@ from unsync import unsync
 import datetime as dt
 import sys
 from concurrent.futures import ThreadPoolExecutor
-import rich.table as Table
 import warnings
 import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
@@ -62,7 +61,7 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        self.symbols_to_trade = get_symbols_for_bot()[:1]
+        self.symbols_to_trade = get_symbols_for_bot()[:25]
         # self.symbols_to_trade = ['QTUMUSD', 'TIAUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
@@ -292,9 +291,9 @@ class Deploy():
         
         if file_exists and os.path.getsize(filename) > 0:
             existing_df = pd.read_csv(filename, index_col=[0, 1], parse_dates=['date'])
-            print(existing_df.index.get_level_values(0).unique()[-1])
-            print(latest.index.get_level_values(0).unique()[-1])
-            print(latest)
+            print('Last date of the existing data inside the file: ', existing_df.index.get_level_values(0).unique()[-1])
+            print('Last date of the latest data inside the file: ', latest.index.get_level_values(0).unique()[-1])
+            print('Latest data: ', latest)
             if existing_df.index.get_level_values(0).unique()[-1] == latest.index.get_level_values(0).unique()[-1]:
                 return
             
@@ -304,7 +303,8 @@ class Deploy():
                 combined_df = pd.concat([existing_df, latest])
 
             if len(combined_df) > self.max_rows_market_data and use_limit:
-                combined_df = combined_df.iloc[-self.max_rows_market_data:]  # Keep only the last max_rows rows
+                combined_df = combined_df.unstack().iloc[-self.max_rows_market_data:].stack(future_stack=True)
+                print('Sliced Combined Dataframe Successfully')
             combined_df.to_csv(filename)
         else:
             print('File does not exist')
@@ -484,6 +484,7 @@ class Deploy():
                 value.max_dollar_allocation = max_allocation_map.get(key, 0)
                 print(f"Max Dollar Allocation for {key}: {value.max_dollar_allocation}")
             
+            
         latest = self.fetch_latest_data()
         self.append_to_csv_with_limit(self.market_data_filename, latest)
         data = self.load_data_from_csv()
@@ -491,7 +492,7 @@ class Deploy():
         
         #Run each strategy on enough data points and get the total portfolio value
         data_to_run_strategy = data.unstack().iloc[-self.length_of_data_to_run_strategy:].stack(future_stack = True)
-        print(data_to_run_strategy)
+        print('Data to run the strategy on: ', data_to_run_strategy)
         
         current_strategy_results = {
             key: value.trading_strategy(data_to_run_strategy, self.best_params[key])
@@ -502,6 +503,8 @@ class Deploy():
         for key, value in current_strategy_results.items():
             if 'strategy' in value.columns:
                 print(f'Strategy Column in {key}')
+            else:
+                print(f'Strategy not in columns. All other columns for {key}: {value.columns}')
                 
         
         current_strategy_returns = {
@@ -605,6 +608,7 @@ class Deploy():
             
             data = pd.read_csv(self.market_data_filename, index_col=[0, 1], parse_dates=['date'])
             self.complete_missing_data(data)
+            print('Updating Data Before Portfolio RM')
 
             if self.perform_portfolio_rm():
                 print('Performed portfolio risk management, portfolio is in drawdown')
