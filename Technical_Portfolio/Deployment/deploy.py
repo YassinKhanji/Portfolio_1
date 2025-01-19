@@ -516,7 +516,7 @@ class Deploy():
         # Ensure symbols_in_current_balance is not None
         if symbols_in_current_balance:
             symbols_not_in_universe = [
-                symbol for symbol in symbols_in_current_balance
+                symbol.replace('USDT', '').replace('USD', '') for symbol in symbols_in_current_balance
                 if symbol not in flattened_universe
             ]
             print(f"Liquidating {symbols_not_in_universe}...")
