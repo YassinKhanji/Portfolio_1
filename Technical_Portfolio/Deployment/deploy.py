@@ -64,7 +64,7 @@ class Deploy():
         # self.symbols_to_trade = ['QTUMUSD', 'TIAUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
-        print(f"Uploading Data First for {len(self.symbols_to_trade)} symbols")
+        print(f"Uploading Data First for {len(self.symbols_to_trade)} symbols: {self.symbols_to_trade}")
         self.upload_complete_market_data()
         print('Data Uploaded, Now Loading Data')
         data = self.load_data_from_csv()
@@ -586,7 +586,7 @@ class Deploy():
                 print('Performed portfolio risk management, portfolio is in drawdown')
                 now = dt.datetime.now()  # Skip running the strategy, go straight to time update
                 print('Current time: ', now)
-                next_hour = (now + dt.timedelta(minutes = 1)).replace(second=0, microsecond=0)
+                next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
                 print('Next hour: ', next_hour)
                 sleep_duration = (next_hour - now).total_seconds()
                 print('Sleep duration: ', sleep_duration)
@@ -599,7 +599,7 @@ class Deploy():
             #Perform the strategy after each hour
             now = dt.datetime.now()
             print('Current time: ', now)
-            next_hour = (now + dt.timedelta(minutes=1)).replace(second=0, microsecond=0)
+            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
             print('Next hour: ', next_hour)
             sleep_duration = (next_hour - now).total_seconds()
             print('Sleep duration: ', sleep_duration)
