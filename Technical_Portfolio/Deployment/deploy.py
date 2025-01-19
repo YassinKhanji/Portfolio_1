@@ -7,8 +7,8 @@ from unsync import unsync
 import datetime as dt
 import sys
 from concurrent.futures import ThreadPoolExecutor
-import re
 import warnings
+import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
@@ -60,7 +60,7 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        self.symbols_to_trade = get_symbols_for_bot()[:22]
+        self.symbols_to_trade = get_symbols_for_bot()[:1]
         # self.symbols_to_trade = ['QTUMUSD', 'TIAUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
@@ -320,6 +320,8 @@ class Deploy():
                 return data
         else:
             return pd.DataFrame()
+        
+    
     
     def perform_portfolio_rm(self):
         
@@ -340,9 +342,23 @@ class Deploy():
 
         if current_strategy_returns_df.empty or len(current_strategy_returns_df) < self.train_size + self.test_size:
             return False
-        portfolio_returns = np.dot(self.best_weights, current_strategy_returns_df.T)
+        portfolio_returns = current_strategy_returns_df.dot(self.best_weights)
         portfolio_returns_series = pd.Series(portfolio_returns)
-        portfolio_returns_series.cumsum().apply(np.exp).plot()
+        
+        
+        ######## Plotting the portfolio returns each loop ########
+        plt.ion()  # Turn on interactive mode
+        fig, ax = plt.subplots()
+        portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
+
+        # Update the plot data here
+        ax.clear()  # Clear the previous plot
+        portfolio_cumulative_returns.plot(ax=ax)  # Re-plot the data
+        plt.draw()  # Update the plot with new data
+        plt.pause(0.1)  # Pause for a short time to allow for updates
+        ############################################################
+        
+        
 
         portfolio_rm_instance = Portfolio_RM(portfolio_returns_series)
 
