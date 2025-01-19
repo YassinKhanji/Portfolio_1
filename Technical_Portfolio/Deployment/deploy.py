@@ -340,7 +340,7 @@ class Deploy():
             #Liquidate the portfolio
             print(f'Liquidating the portfolio because in_drawdown in {in_drawdown.iloc[-1]}')
             symbols_to_liquidate = self.symbols_in_current_balance()
-            symbols_to_liquidate = [s.replace('USDT', '', regex = False) for s in symbols_to_liquidate]
+            symbols_to_liquidate = [s.replace('USDT', '') for s in symbols_to_liquidate]
             self.liquidate(symbols_to_liquidate)
             return True
         else :
