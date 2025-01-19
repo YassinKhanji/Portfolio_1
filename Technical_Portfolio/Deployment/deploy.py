@@ -7,6 +7,7 @@ from unsync import unsync
 import datetime as dt
 import sys
 from concurrent.futures import ThreadPoolExecutor
+import rich.table as Table
 import warnings
 import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
@@ -51,6 +52,7 @@ class Deploy():
         self.selected_strategy = None
         self.live_selected_strategy = None
         self.data_instance = None
+        self.results_strategy_returns_ = None
         self.drawdown_threshold = -0.15
         self.max_rows_market_data = self.market_data_size = 2000
         self.length_of_data_to_run_strategy = 500
@@ -204,11 +206,11 @@ class Deploy():
             missing_data = self.fetch_latest_data(limit = int(hours_difference) + 1)
             complete_data = pd.concat([data, missing_data])
             complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
-            complete_data.to_csv('market_data.csv')
+            complete_data.to_csv(self.market_data_filename)
             print('Market data updated successfully')
         else:
             print('No missing data')
-            data.to_csv('market_data.csv')
+            data.to_csv(self.market_data_filename)
             print('Market data updated successfully')
     
 
@@ -346,17 +348,17 @@ class Deploy():
         portfolio_returns_series = pd.Series(portfolio_returns)
         
         
-        ######## Plotting the portfolio returns each loop ########
-        plt.ion()  # Turn on interactive mode
-        fig, ax = plt.subplots()
-        portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
+        # ######## Plotting the portfolio returns each loop ########
+        # plt.ion()  # Turn on interactive mode
+        # fig, ax = plt.subplots()
+        # portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
 
-        # Update the plot data here
-        ax.clear()  # Clear the previous plot
-        portfolio_cumulative_returns.plot(ax=ax)  # Re-plot the data
-        plt.draw()  # Update the plot with new data
-        plt.pause(0.1)  # Pause for a short time to allow for updates
-        ############################################################
+        # # Update the plot data here
+        # ax.clear()  # Clear the previous plot
+        # portfolio_cumulative_returns.plot(ax=ax)  # Re-plot the data
+        # plt.draw()  # Update the plot with new data
+        # plt.pause(0.1)  # Pause for a short time to allow for updates
+        # ############################################################
         
         
 
@@ -408,7 +410,11 @@ class Deploy():
             strategy_map (_type_): _description_
             low_corr_threshold (int, optional): _description_. Defaults to 1.
         """
-        results_strategy_returns = self.run_wfo_and_get_results_returns()
+        if self.counter % self.portfolio_optimization_frequency == 0:
+            print('Already have the results strategy returns from the portfolio optimization, Skipping the WFO Process...')
+            results_strategy_returns = self.results_strategy_returns_
+        else:
+            results_strategy_returns = self.run_wfo_and_get_results_returns()
 
         portfolio_management = Portfolio_Management(results_strategy_returns)
 
@@ -443,6 +449,8 @@ class Deploy():
             step_size (int, optional): _description_. Defaults to 1000.
         """
         results_strategy_returns = self.run_wfo_and_get_results_returns()
+        
+        self.results_strategy_returns_ = results_strategy_returns
         
         #Get portfolio optimization instance
         portfolio_optimization_instance = Portfolio_Optimization(log_rets = results_strategy_returns, train_size = self.train_size, test_size = self.test_size, step_size = self.step_size, objective = 'multiple')
