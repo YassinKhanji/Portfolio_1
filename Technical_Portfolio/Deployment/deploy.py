@@ -60,7 +60,7 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        self.symbols_to_trade = get_symbols_for_bot()[:3]
+        self.symbols_to_trade = get_symbols_for_bot()[:22]
         # self.symbols_to_trade = ['QTUMUSD', 'TIAUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
@@ -288,7 +288,7 @@ class Deploy():
         last_index = [latest.index.get_level_values(0).unique()[-1]] * len(latest_data)
         latest_data.index = pd.MultiIndex.from_tuples(zip(last_index, latest_data.index), names = ['date', ''])
         
-        if file_exists:
+        if file_exists and os.path.getsize(filename) > 0:
             existing_df = pd.read_csv(filename, index_col=[0, 1], parse_dates=['date'])
             print(existing_df.index.get_level_values(0).unique()[-1])
             print(latest.index.get_level_values(0).unique()[-1])
@@ -306,7 +306,10 @@ class Deploy():
             combined_df.to_csv(filename)
         else:
             print('File does not exist')
-            latest.to_csv(filename, mode='w', header=True)
+            if last_row:
+                latest_data.to_csv(filename, mode='w', header=True)
+            else:
+                latest.to_csv(filename, mode = 'w', header=True)
             
     #Getting the data from csv
     def load_data_from_csv(self):
