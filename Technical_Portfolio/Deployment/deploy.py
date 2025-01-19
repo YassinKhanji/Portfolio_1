@@ -60,7 +60,8 @@ class Deploy():
         self.timeframe = '1h'
         self.best_params = None
         self.best_weights = None
-        self.symbols_to_trade = get_symbols_for_bot()
+        self.symbols_to_trade = get_symbols_for_bot()[:3]
+        # self.symbols_to_trade = ['QTUMUSD', 'TIAUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
         print(f"Uploading Data First for {len(self.symbols_to_trade)} symbols")
@@ -99,8 +100,11 @@ class Deploy():
             ]
 
             print("Symbols in your current balance:", symbols)
+            return symbols
         except ccxt.BaseError as e:
             print(f"An error occurred: {e}")
+            
+    
     def get_coin_balance(self, formatted_coin):
         try:
             balance = self.exchange.fetch_balance()
@@ -336,6 +340,7 @@ class Deploy():
             #Liquidate the portfolio
             print(f'Liquidating the portfolio because in_drawdown in {in_drawdown.iloc[-1]}')
             symbols_to_liquidate = self.symbols_in_current_balance()
+            symbols_to_liquidate = [s.replace('USDT', '', regex = False) for s in symbols_to_liquidate]
             self.liquidate(symbols_to_liquidate)
             return True
         else :
@@ -569,7 +574,7 @@ class Deploy():
                 print('Performed portfolio risk management, portfolio is in drawdown')
                 now = dt.datetime.now()  # Skip running the strategy, go straight to time update
                 print('Current time: ', now)
-                next_hour = (now + dt.timedelta(hours = 1)).replace(minute= 0, second=0, microsecond=0)
+                next_hour = (now + dt.timedelta(minutes = 1)).replace(second=0, microsecond=0)
                 print('Next hour: ', next_hour)
                 sleep_duration = (next_hour - now).total_seconds()
                 print('Sleep duration: ', sleep_duration)
@@ -582,7 +587,7 @@ class Deploy():
             #Perform the strategy after each hour
             now = dt.datetime.now()
             print('Current time: ', now)
-            next_hour = (now + dt.timedelta(hours = 1)).replace(minute= 0, second=0, microsecond=0)
+            next_hour = (now + dt.timedelta(minutes=1)).replace(second=0, microsecond=0)
             print('Next hour: ', next_hour)
             sleep_duration = (next_hour - now).total_seconds()
             print('Sleep duration: ', sleep_duration)
