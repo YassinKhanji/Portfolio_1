@@ -320,9 +320,18 @@ class Deploy():
     
     def perform_portfolio_rm(self):
         
-        if os.path.isfile(self.strategy_data_filename):
-            current_strategy_returns_df = pd.read_csv(self.strategy_data_filename, index_col=[0, 1], parse_dates=['date'])
+        if os.path.isfile(self.strategy_data_filename) and os.path.getsize(self.strategy_data_filename) > 0:
+            try:
+                current_strategy_returns_df = pd.read_csv(
+                    self.strategy_data_filename,
+                    index_col=[0, 1],
+                    parse_dates=['date']
+                )
+            except pd.errors.EmptyDataError:
+                print("The file is empty or has no valid data.")
+                return False
         else:
+            print(f"File {self.strategy_data_filename} does not exist or is empty.")
             return False
 
 
