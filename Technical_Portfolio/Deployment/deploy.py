@@ -56,19 +56,19 @@ class Deploy():
         self.max_rows_market_data = self.market_data_size = 2000
         self.length_of_data_to_run_strategy = 500
         reset_symbols_threshold = 750 #Get new symbols every month
-        self.market_data_filename = 'market_data.csv'
-        self.strategy_data_filename = 'strategy_returns.csv'
+        self.market_data_filename = 'market_data_test.csv'
+        self.strategy_data_filename = 'strategy_returns_test.csv'
         self.timeframe = '1h'
-        self.best_params = None
-        self.best_weights = None
         self.symbols_to_trade = get_symbols_for_bot()[:25]
-        # self.symbols_to_trade = ['QTUMUSD', 'TIAUSD']
+        # self.symbols_to_trade = ['POLUSD']
+        # self.symbols_to_trade = ['FORTHUSD', 'FTMUSD', 'QTUMUSD', 'LTCUSD', 'MEMEUSD', 'PEPEUSD', 'ETHUSD', 'BTCUSD', 'CVCUSD', 'PHAUSD', 'BCHUSD', 'OMNIUSD', 'ZKUSD', 'SHIBUSD', 'POLUSD', 'ARBUSD', 'PONDUSD', 'XRPUSD', 'ZROUSD', 'LPTUSD', 'SANDUSD', 'SYNUSD', 'GLMRUSD', 'ALTUSD', 'ENJUSD', 'MOVRUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
         print(f"Uploading Data First for {len(self.symbols_to_trade)} symbols: {self.symbols_to_trade}")
         self.upload_complete_market_data()
         print('Data Uploaded, Now Loading Data')
         data = self.load_data_from_csv()
+        self.data = data
         print('Data Loaded')
         strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
         strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size)
@@ -471,6 +471,18 @@ class Deploy():
         #Get the current_total_balance
         current_total_balance = self.get_portfolio_value()
         
+        # ###################################
+        # live_strat_1_instance = Last_Days_Low(self.data, objective='multiple', train_size=500, test_size=500, step_size=500, live = True)
+        # live_strat_2_instance = Sprtrnd_Breakout(self.data, objective='multiple', train_size=500, test_size=500, step_size=500, live = True)
+        # self.live_selected_strategy = {
+        #     'cash_strat': self.cash_df,
+        #     'strat_1': live_strat_1_instance,
+        #     'strat_2': live_strat_2_instance,
+        # }
+        # self.best_weights = [0.0, 0.5, 0.5]
+        # self.best_params = {'strat_1': {'std_window': np.int64(19), 'mean_window': np.int64(6), 'ema_window': np.int64(85), 'hourly_lookback': np.int64(3), 'daily_lookback': np.int64(3), '_min_pos': 0.6949941493453458, '_max_pos': 1.0909079937846315, 'sl_ind_length': np.int64(20), 'sl_ind_mult': 3.066997884824298, 'tp_mult': np.int64(5), 'ptp_mult': 1.9611720243493493, 'ptp_exit_percent': 0.8600804638103364},
+        #     'strat_2': {'std_window': np.int64(22), 'mean_window': np.int64(22), 'ema_window': np.int64(61), 'str_length': np.int64(17), 'str_mult': np.int64(3), '_min_pos': 0.28719515606534246, '_max_pos': 1.457568143083656, 'sl_ind_length': np.int64(43), 'sl_ind_mult': 3.7477828452419297, 'tp_mult': np.int64(3), 'ptp_mult': 1.256068322761324, 'ptp_exit_percent': 0.1363902305845882}}
+        # ###################################
         
         print(f"Best Weights: {self.best_weights}")
         print(f"Current Total Balance: {current_total_balance}")
@@ -512,9 +524,9 @@ class Deploy():
 
         for key, value in current_strategy_results.items():
             if 'strategy' in value.columns:
-                print(f'Strategy Column in {key}: {value['strategy']}')
+                print(f'Strategy Column in {key}: {value.head()}')
             else:
-                print(f'Strategy not in columns. All other columns for {key}: {value.columns}')
+                print(f'Strategy not in columns. All other columns for {key}: {value.head()}')
                 
         
         current_strategy_returns = {
@@ -525,10 +537,11 @@ class Deploy():
         for key, value in current_strategy_returns.items():
             print(f"Strategy returns for {key}: {value}")
         
-        current_strategy_returns['cash_strat'] = self.cash_df['strategy']
-        
         #Append current strategy results to the csv file for future analysis
         current_strategy_returns_df = pd.concat(current_strategy_returns, axis=1).fillna(0)
+        cash_strategy = self.cash_df['strategy'].reindex(current_strategy_returns_df.index).dropna()
+        current_allocation_results_df = pd.concat([current_strategy_returns_df, cash_strategy], axis=1).fillna(0)
+        
         print(f'Current Strategy returns df: {current_strategy_returns_df}')
         print('Appending to Strategy returns data...')
         self.append_to_csv_with_limit(self.strategy_data_filename, current_strategy_returns_df, use_limit = False, last_row = False)
@@ -547,9 +560,14 @@ class Deploy():
         
         current_allocation_results_df = pd.concat(current_allocation_strategy_map, axis=1).fillna(0).sum(axis=1).sort_index()
         print(f'Current allocation results df: {current_allocation_results_df}')
-        current_allocation = current_allocation_results_df.loc[current_allocation_results_df.index.get_level_values("date").unique()[-1]]
-        print(f'Current Allocations: {current_allocation}')
-        
+        if not current_allocation_results_df.empty:
+            last_index = current_allocation_results_df.index.get_level_values(0).unique()[-1] 
+            print(f'Last index of current allocation results df: {last_index}')       
+            current_allocation = current_allocation_results_df.loc[last_index]
+            print(f'Current Allocations: {current_allocation}')
+        else:
+            print(f'Current allocation results df is empty')
+    
         
         # Extract current universes from selected_strategy
         print('Getting Universe')
@@ -558,6 +576,7 @@ class Deploy():
             for key, value in self.live_selected_strategy.items()
             if key != 'cash_strat'
         ]
+        print(f'Current Universes : {current_universes}')
 
         # Remove overlaps between universes
         # Start with the first set and iteratively remove overlaps
@@ -610,6 +629,8 @@ class Deploy():
             elif to_add < 0 and coin_balance >= abs(to_add):
                 print(f"Selling {-to_add} {formatted_coin} from the portfolio...")
                 self.sell(-to_add, coin_for_order)
+            else:
+                print(f'Nothing to add because to_add is almost 0.0: {to_add}')
             
         
     def main_loop(self):
@@ -652,7 +673,7 @@ class Deploy():
             #Perform the strategy after each hour
             now = dt.datetime.now()
             print('Current time: ', now)
-            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
+            next_hour = (now + dt.timedelta(seconds=1)).replace(microsecond=0)
             print('Next hour: ', next_hour)
             sleep_duration = (next_hour - now).total_seconds()
             print('Sleep duration: ', sleep_duration)
