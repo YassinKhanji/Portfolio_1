@@ -95,7 +95,6 @@ class Position():
                     if df.loc[df.index[i-1], ('position', coin)] > 0.0 if i > 0.0 else False: # check to see if we were in a position previously
                         current_position = df.loc[df.index[i-1], ('position', coin)]
                         new_position = current_position - current_position * df.loc[df.index[i], ('exit_signal', coin)]
-                        df[('position', coin)] = df[('position', coin)].astype(float)
                         df.loc[df.index[i], ('position', coin)] = float(new_position) 
 
                 elif df.loc[df.index[i-1], ('position', coin)] > 0.0 if i > 0.0 else False:
@@ -103,7 +102,6 @@ class Position():
                     
             if not self.live:
                 df.loc[:, ('position', coin)] = df.loc[:, ('position', coin)].shift(1)
-            df[('position', coin)] = df[('position', coin)].astype(float)    
             df.loc[:, ('position', coin)] = np.clip(df.loc[:, ('position', coin)], a_min = self._min, a_max = self._max)
         
         self.df = df.stack(future_stack=True)
