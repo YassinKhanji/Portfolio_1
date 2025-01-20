@@ -56,8 +56,8 @@ class Deploy():
         self.max_rows_market_data = self.market_data_size = 2000
         self.length_of_data_to_run_strategy = 500
         reset_symbols_threshold = 750 #Get new symbols every month
-        self.market_data_filename = 'market_data_test.csv'
-        self.strategy_data_filename = 'strategy_returns_test.csv'
+        self.market_data_filename = 'market_data.csv'
+        self.strategy_data_filename = 'strategy_returns.csv'
         self.timeframe = '1h'
         self.symbols_to_trade = get_symbols_for_bot()[:25]
         # self.symbols_to_trade = ['POLUSD']
@@ -630,7 +630,7 @@ class Deploy():
                 print(f"Selling {-to_add} {formatted_coin} from the portfolio...")
                 self.sell(-to_add, coin_for_order)
             else:
-                print(f'Nothing to add because to_add is almost 0.0: {to_add}')
+                print(f"Nothing to add because {to_add} in coin's currency is almost $0.0")
             
         
     def main_loop(self):
@@ -673,7 +673,7 @@ class Deploy():
             #Perform the strategy after each hour
             now = dt.datetime.now()
             print('Current time: ', now)
-            next_hour = (now + dt.timedelta(seconds=1)).replace(microsecond=0)
+            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
             print('Next hour: ', next_hour)
             sleep_duration = (next_hour - now).total_seconds()
             print('Sleep duration: ', sleep_duration)
