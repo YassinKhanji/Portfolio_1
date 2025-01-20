@@ -86,14 +86,15 @@ class Position():
 
             for i in range(len(df)):
                 if df.loc[df.index[i], ('entry_signal', coin)] > 0:
-                    df.loc[df.index[i], ('position', coin)] = (df.loc[df.index[i-1], ('position', coin)] if i > 0 else 0) + df.loc[df.index[i], ('entry_signal', coin)]
+                    df.loc[df.index[i], ('position', coin)] = (df.loc[df.index[i-1], ('position', coin)] if i > 0 else 0.0) + df.loc[df.index[i], ('entry_signal', coin)]
                     # The above will add the entry to the current position
 
                 elif df.loc[df.index[i], ('exit_signal', coin)] > 0:
                     if df.loc[df.index[i-1], ('position', coin)] > 0 if i > 0 else False: # check to see if we were in a position previously
                         current_position = df.loc[df.index[i-1], ('position', coin)]
                         new_position = current_position - current_position * df.loc[df.index[i], ('exit_signal', coin)]
-                        df.loc[df.index[i], ('position', coin)] = new_position 
+                        df[('position', coin)] = df[('position', coin)].astype(float)
+                        df.loc[df.index[i], ('position', coin)] = float(new_position) 
 
                 elif df.loc[df.index[i-1], ('position', coin)] > 0 if i > 0 else False:
                     df.loc[df.index[i], ('position', coin)] = df.loc[df.index[i-1], ('position', coin)]
