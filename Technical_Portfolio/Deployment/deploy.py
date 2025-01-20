@@ -291,9 +291,9 @@ class Deploy():
         
         if file_exists and os.path.getsize(filename) > 0:
             existing_df = pd.read_csv(filename, index_col=[0, 1], parse_dates=['date'])
-            print('Last date of the existing data inside the file: ', existing_df.index.get_level_values(0).unique()[-1])
-            print('Last date of the latest data inside the file: ', latest.index.get_level_values(0).unique()[-1])
-            print('Latest data: ', latest)
+            print(f'Last date of the existing data inside the file: {existing_df.index.get_level_values(0).unique()[-1]}')
+            print(f'Last date of the latest data inside the file: {latest.index.get_level_values(0).unique()[-1]}')
+
             if existing_df.index.get_level_values(0).unique()[-1] == latest.index.get_level_values(0).unique()[-1]:
                 return
             
@@ -307,7 +307,7 @@ class Deploy():
                 print('Sliced Combined Dataframe Successfully')
             combined_df.to_csv(filename)
         else:
-            print('File does not exist')
+            print('File does not exist or is empty. Adding data to it.')
             if last_row:
                 latest_data.to_csv(filename, mode='w', header=True)
             else:
@@ -317,11 +317,18 @@ class Deploy():
     def load_data_from_csv(self):
         filename = self.market_data_filename
         if os.path.isfile(filename):
-            data = pd.read_csv(filename, index_col=[0, 1], parse_dates=['date'])
-            if len(data) >= self.train_size + self.test_size:
-                return data
+            try:
+                data = pd.read_csv(filename, index_col=[0, 1], parse_dates=['date'])
+                if len(data.unstack()) >= self.train_size + self.test_size:
+                    print(f'Returning data. Its size: {len(data.unstack())}')
+                    return data
+                else:
+                    print(f'Data not large enough. Its size: {len(data.unstack())}')
+                    return
+            except Exception as e:
+                print(f'File does not exist or is empty: {e}')
         else:
-            return pd.DataFrame()
+            print(f'The file is empty or does not exist')
         
     
     
@@ -484,15 +491,18 @@ class Deploy():
                 value.max_dollar_allocation = max_allocation_map.get(key, 0)
                 print(f"Max Dollar Allocation for {key}: {value.max_dollar_allocation}")
             
-            
+        print('Fetching latest market data...')
         latest = self.fetch_latest_data()
+        print('Fetching Done. Appending it to market data...')
         self.append_to_csv_with_limit(self.market_data_filename, latest)
+        print('Appending done. Loading data...')
         data = self.load_data_from_csv()
+        print(f'Loading done. Data head: {data.head()}')
         
         
         #Run each strategy on enough data points and get the total portfolio value
         data_to_run_strategy = data.unstack().iloc[-self.length_of_data_to_run_strategy:].stack(future_stack = True)
-        print('Data to run the strategy on: ', data_to_run_strategy)
+        print(f'Data to run the strategy on: {data_to_run_strategy}')
         
         current_strategy_results = {
             key: value.trading_strategy(data_to_run_strategy, self.best_params[key])
@@ -502,7 +512,7 @@ class Deploy():
 
         for key, value in current_strategy_results.items():
             if 'strategy' in value.columns:
-                print(f'Strategy Column in {key}')
+                print(f'Strategy Column in {key}: {value['strategy']}')
             else:
                 print(f'Strategy not in columns. All other columns for {key}: {value.columns}')
                 
@@ -512,24 +522,37 @@ class Deploy():
             for key, value in current_strategy_results.items()
         }
         
+        for key, value in current_strategy_returns.items():
+            print(f"Strategy returns for {key}: {value}")
+        
         current_strategy_returns['cash_strat'] = self.cash_df['strategy']
         
         #Append current strategy results to the csv file for future analysis
         current_strategy_returns_df = pd.concat(current_strategy_returns, axis=1).fillna(0)
-        print(current_strategy_returns_df)
+        print(f'Current Strategy returns df: {current_strategy_returns_df}')
+        print('Appending to Strategy returns data...')
         self.append_to_csv_with_limit(self.strategy_data_filename, current_strategy_returns_df, use_limit = False, last_row = False)
+        print(f'Appending Done.')
         
+        
+        #Getting the allocation
         current_allocation_strategy_map = {
             key: value['coin_amount_to_bought']
             for key, value in current_strategy_results.items()
             if key != 'cash_strat'
         }
         
+        for key, value in current_allocation_strategy_map.items():
+            print(f'Current Allocation for {key}: {value}')
+        
         current_allocation_results_df = pd.concat(current_allocation_strategy_map, axis=1).fillna(0).sum(axis=1).sort_index()
+        print(f'Current allocation results df: {current_allocation_results_df}')
         current_allocation = current_allocation_results_df.loc[current_allocation_results_df.index.get_level_values("date").unique()[-1]]
+        print(f'Current Allocations: {current_allocation}')
         
         
         # Extract current universes from selected_strategy
+        print('Getting Universe')
         current_universes = [
             set(value.current_universe)  # Convert each universe to a set for comparison
             for key, value in self.live_selected_strategy.items()
@@ -548,9 +571,11 @@ class Deploy():
         unique_universes = [list(universe) for universe in unique_universes]
 
         flattened_universe = [item for sublist in unique_universes for item in sublist]
+        print(f'Current Universe: {flattened_universe}')
 
 
         symbols_in_current_balance = self.symbols_in_current_balance()
+        print(f'Symbols in Current balance: {symbols_in_current_balance}')
         
         # Ensure symbols_in_current_balance is not None
         if symbols_in_current_balance:
