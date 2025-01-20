@@ -59,9 +59,9 @@ class Deploy():
         self.market_data_filename = 'market_data.csv'
         self.strategy_data_filename = 'strategy_returns.csv'
         self.timeframe = '1h'
-        self.symbols_to_trade = get_symbols_for_bot()[:25]
-        # self.symbols_to_trade = ['POLUSD']
-        # self.symbols_to_trade = ['FORTHUSD', 'FTMUSD', 'QTUMUSD', 'LTCUSD', 'MEMEUSD', 'PEPEUSD', 'ETHUSD', 'BTCUSD', 'CVCUSD', 'PHAUSD', 'BCHUSD', 'OMNIUSD', 'ZKUSD', 'SHIBUSD', 'POLUSD', 'ARBUSD', 'PONDUSD', 'XRPUSD', 'ZROUSD', 'LPTUSD', 'SANDUSD', 'SYNUSD', 'GLMRUSD', 'ALTUSD', 'ENJUSD', 'MOVRUSD']
+        # self.symbols_to_trade = get_symbols_for_bot()[:25]
+        self.symbols_to_trade = ['ZKUSD', 'FILUSD', 'MASKUSD', 'FORTHUSD', 'LSKUSD', 'MANAUSD', 'ADAUSD', 'SAGAUSD']
+        # self.symbols_to_trade = ['STORJUSD', 'MINAUSD', 'TRXUSD', 'RADUSD', 'TAOUSD', 'OGNUSD', 'IMXUSD', 'ZKUSD', 'FILUSD', 'MASKUSD', 'FORTHUSD', 'LSKUSD', 'MANAUSD', 'ADAUSD', 'FXSUSD', 'TONUSD', 'AVAXUSD', 'GMTUSD', 'SAGAUSD', 'SEIUSD', 'DOTUSD', 'ETCUSD', 'BLURUSD', 'ANKRUSD', 'WIFUSD']
         current_total_balance = self.get_portfolio_value()
         print(f"Current Total Balance: {current_total_balance}")
         print(f"Uploading Data First for {len(self.symbols_to_trade)} symbols: {self.symbols_to_trade}")
@@ -301,6 +301,9 @@ class Deploy():
                 combined_df = pd.concat([existing_df, latest_data])
             else:
                 combined_df = pd.concat([existing_df, latest])
+                  
+            # Ensure the index is unique before unstacking
+            combined_df = combined_df[~combined_df.index.duplicated(keep='last')]
 
             if len(combined_df) > self.max_rows_market_data and use_limit:
                 combined_df = combined_df.unstack().iloc[-self.max_rows_market_data:].stack(future_stack=True)
@@ -489,6 +492,7 @@ class Deploy():
         print(f"Live Selected Strategy: {self.live_selected_strategy}")
         print(f'Selected Strategy: {self.selected_strategy}')
         print(f'Live Strategy Map: {self.live_strategy_map}')
+        print(f'Best Params: {self.best_params}')
         #Store the max allocation for each strategy in a dictionary
         max_allocation_map = {
             key: self.best_weights[i] * current_total_balance / strategy.max_universe
@@ -671,13 +675,13 @@ class Deploy():
             
 
             #Perform the strategy after each hour
-            now = dt.datetime.now()
-            print('Current time: ', now)
-            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
-            print('Next hour: ', next_hour)
-            sleep_duration = (next_hour - now).total_seconds()
-            print('Sleep duration: ', sleep_duration)
-            time.sleep(sleep_duration)
+            # now = dt.datetime.now()
+            # print('Current time: ', now)
+            # next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
+            # print('Next hour: ', next_hour)
+            # sleep_duration = (next_hour - now).total_seconds()
+            # print('Sleep duration: ', sleep_duration)
+            # time.sleep(sleep_duration)
             
             print('Running strategy')
             self.run_strategy()
