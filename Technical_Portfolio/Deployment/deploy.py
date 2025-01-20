@@ -301,7 +301,6 @@ class Deploy():
                 combined_df = pd.concat([existing_df, latest_data])
             else:
                 combined_df = pd.concat([existing_df, latest])
-                \  
             # Ensure the index is unique before unstacking
             combined_df = combined_df[~combined_df.index.duplicated(keep='last')]
 

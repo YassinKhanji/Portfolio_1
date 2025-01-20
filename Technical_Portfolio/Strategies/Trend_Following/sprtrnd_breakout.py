@@ -102,16 +102,6 @@ class Sprtrnd_Breakout():
 
 
         for time_index in df.index.get_level_values(0).unique():
-            # Remove coins that are no longer in the universe *for this time index*
-            coins_to_remove = []
-            
-            
-            for coin in current_universe:
-                if (time_index, coin) in df.index and df.loc[(time_index, coin), 'position'] == 0: 
-                    coins_to_remove.append(coin)
-                    df.loc[(time_index, coin), 'in_universe'] = False
-            current_universe.difference_update(coins_to_remove) #use difference_update for set manipulation
-
 
             current_coins = df.loc[time_index].index
             available_coins = set(current_coins) - current_universe
@@ -139,12 +129,22 @@ class Sprtrnd_Breakout():
                     missing_positions = max_positions - len(current_universe)
                     to_be_added: List[str] = list(potential_coins)[:missing_positions]
                     current_universe.update(to_be_added)
+                    
+            # Remove coins that are no longer in the universe *for this time index*
+            coins_to_remove = []
+            for coin in current_universe:
+                if (time_index, coin) in df.index and df.loc[(time_index, coin), 'position'] == 0: 
+                    coins_to_remove.append(coin)
+                    df.loc[(time_index, coin), 'in_universe'] = False
+            current_universe.difference_update(coins_to_remove) #use difference_update for set manipulation
+            
 
             df.loc[(time_index, list(current_universe)), 'in_universe'] = True
         
-        df = df.unstack()
-        df['in_universe'] = df['in_universe'].shift(periods = 1, freq = low_freq)
-        df = df.stack(future_stack= True)
+        if not self.live:
+            df = df.unstack()
+            df['in_universe'] = df['in_universe'].shift(periods = 1, freq = low_freq)
+            df = df.stack(future_stack= True)
         
         return df['in_universe'], current_universe
 
