@@ -277,9 +277,9 @@ class Last_Days_Low():
         df['in_universe'], self.current_universe = self.update_universe(df, max_positions = self.max_universe)
         print('Universe Updated')
 
-        df.dropna(inplace = True)
+        # df.dropna(inplace = True)
 
-        df = df[df['in_universe']]
+        df = df[df['in_universe'] == True]
         print('In Universe')
         
         return df
