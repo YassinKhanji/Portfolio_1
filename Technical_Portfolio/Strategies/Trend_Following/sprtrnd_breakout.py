@@ -50,6 +50,7 @@ class Sprtrnd_Breakout():
         self.opt_freq = opt_freq
         self.live = live
         self.max_dollar_allocation = max_dollar_allocation
+        self.threshold = 0.1
         self.param_space = {
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),
@@ -57,7 +58,7 @@ class Sprtrnd_Breakout():
         'str_length': Integer(5, 50),
         'str_mult': Integer(1, 5),
         '_min_pos': Real(0, 0.75),
-        '_max_pos': Real(0, 1.5),
+        '_max_pos': Real(self.threshold , 1.5),
         'sl_ind_length': Integer(5, 50),
         'sl_ind_mult': Real(0.5, 5),
         'tp_mult': Integer(2, 7),
@@ -95,10 +96,9 @@ class Sprtrnd_Breakout():
         Should include the dataframe with the lower frequency data. (daily, weekly, etc.)
         Assumes a stacked dataframe
         """
-        threshold = 0.1
         current_universe = set()
         df['in_universe'] = False
-        df['position'] = np.where(df['position'] < threshold, 0, df['position']) #Since when optimizing, min_pos can never be 0, thus we put a threshold of 0.1 to indicate a non position    
+        df['position'] = np.where(df['position'] < self.threshold , 0, df['position']) #Since when optimizing, min_pos can never be 0, thus we put a threshold of 0.1 to indicate a non position    
 
 
         for time_index in df.index.get_level_values(0).unique():
