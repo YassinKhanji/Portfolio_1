@@ -20,11 +20,15 @@ class Coarse_1():
 
         return universe
 
-    def volume_flag(self, df, max_dollar_allocation = 1000000):
+    def volume_flag(self, df, max_dollar_allocation = 1000000, low_freq = '1d'):
         df['volume_flag'] =  np.where(df['htf_volume_in_dollars'] * 0.05 > max_dollar_allocation, 1, 0)
+        
+        df = df.unstack()
+        df['volume_flag'] = df['volume_flag'].shift(periods = 1, freq = low_freq) #We want the value of the previous day
+        df = df.stack(future_stack= True)
         return df
    
-    def sort_by_volume(self, df):
+    def sort_by_volume(self, df, low_freq = '1d'):
         """
         This function sorts the coins index by volume in descending order and keeps the top coins.
 
@@ -46,11 +50,15 @@ class Coarse_1():
         # df.index = df.index.remove_unused_levels()
 
         df['volume_rank'] = df['htf_volume'].groupby(df.index.get_level_values(0)).rank(ascending = False)
+        
+        df = df.unstack()
+        df['volume_rank'] = df['volume_rank'].shift(periods = 1, freq = low_freq) #We want the rank of the previous day
+        df = df.stack(future_stack= True)
 
         return df
     
     #Sort by standard deviation
-    def sort_by_std(self, df, std_window, mean_window):
+    def sort_by_std(self, df, std_window, mean_window, low_freq = '1d'):
         """
         Calculates the normalized standard deviation (in %) of the returns for each coin
         and sorts the coins by standard deviation in descending order for each date.
@@ -95,6 +103,10 @@ class Coarse_1():
         # df.index = df.index.remove_unused_levels()
 
         df['std_rank'] = df['htf_std_values'].groupby(df.index.get_level_values(0)).rank(ascending = False)
+        
+        df = df.unstack()
+        df['std_rank'] = df['std_rank'].shift(periods = 1, freq = low_freq) #We want the rank of the previous day
+        df = df.stack(future_stack= True)
 
         """
         The following part is made to preserve the indicator data for all coins (filtered and non-filtered).

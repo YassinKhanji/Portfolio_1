@@ -21,7 +21,7 @@ class Fine_1():
         return self.universe
     
     #Now Make it as a function
-    def above_ema(self, df, ema_window):
+    def above_ema(self, df, ema_window, low_freq = '1d'):
         """
         parameters:
             data: pd.DataFrame (stacked with original data)
@@ -33,4 +33,9 @@ class Fine_1():
             df[f'ema_{ema_window}', coin] = ta.ema(df['close', coin], length=ema_window)
         df = df.stack(future_stack = True)
         df['above_ema'] = (df['close'].fillna(0) > df[f'ema_{ema_window}'].fillna(0)).astype(int)
+        
+        df = df.unstack()
+        df['above_ema'] = df['above_ema'].shift(periods = 1, freq = low_freq) #We want the value of the previous day
+        df = df.stack(future_stack= True)
+        
         return df

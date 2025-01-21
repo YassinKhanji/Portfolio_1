@@ -139,11 +139,6 @@ class Last_Days_Low():
             current_universe.difference_update(coins_to_remove) #use difference_update for set manipulation
 
             df.loc[(time_index, list(current_universe)), 'in_universe'] = True
-        
-        if not self.live:
-            df = df.unstack()
-            df['in_universe'] = df['in_universe'].shift(periods = 1, freq = low_freq)
-            df = df.stack(future_stack= True)
             
         return df['in_universe'], current_universe
 

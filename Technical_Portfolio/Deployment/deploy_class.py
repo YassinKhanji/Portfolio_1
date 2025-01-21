@@ -684,3 +684,5 @@ class Deploy():
             
             print('Running strategy')
             self.run_strategy()
+            
+Deploy().main_loop()
