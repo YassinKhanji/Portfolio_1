@@ -115,7 +115,7 @@ class Last_Days_Low():
                 # This is handled later.
 
                 filter_condition = (
-                    (temp_df['above_ema']) &
+                    (temp_df['above_ema'] > 0) &
                     (temp_df['volume_rank'] < 50) &
                     (temp_df['std_rank'] < 10) &
                     (temp_df['entry_signal'] == 1)
