@@ -3,7 +3,7 @@ import traceback
 from telegram import Bot
 import os
 from unsync import unsync
-from deploy import Deploy
+from deploy import main_loop
 
 """
 This python script is specifically used to monitor errors and send it to a telegram bot.
@@ -25,8 +25,8 @@ async def send_telegram_message(message):
 @unsync
 async def main():
     try:
-        # Your script's main code here
-        Deploy().main_loop()
+        #Below is to run everything
+        main_loop()
     except Exception as e:
         error_message = f"An error occurred:\n\n{traceback.format_exc()}"
         print(error_message)  # Print to console for local debugging
