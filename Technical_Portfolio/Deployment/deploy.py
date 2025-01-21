@@ -517,7 +517,6 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
     for key, value in current_strategy_results.items():
         if 'strategy' in value.columns:
             print(f'Strategy Column in {key}: {value["position"].tail()}')
-            value.to_csv(f'{key}_position.csv')
         else:
             print(f'Strategy not in columns. All other columns for {key}: {value.head()}')
             
