@@ -56,8 +56,11 @@ _symbols_threshold = 750 #Get new symbols every month
 market_data_filename = 'market_data.csv'
 strategy_data_filename = 'strategy_returns.csv'
 timeframe = '1h'
-symbols_to_trade = get_symbols_for_bot()[:25]
-# symbols_to_trade = ['ZKUSD', 'FILUSD', 'MASKUSD', 'FORTHUSD', 'LSKUSD', 'MANAUSD', 'ADAUSD', 'SAGAUSD']
+symbols_to_trade = get_symbols_for_bot()[:20]
+for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'SOLUSD', 'ADAUSD', 'DOTUSD']:
+    if symbol not in symbols_to_trade:
+        symbols_to_trade.append(symbol)
+# symbols_to_trade = ['BTCUSD', 'ETHUSD', 'XRPUSD', 'SOLUSD', 'BONKUSD']
 # symbols_to_trade = ['STORJUSD', 'MINAUSD', 'TRXUSD', 'RADUSD', 'TAOUSD', 'OGNUSD', 'IMXUSD', 'ZKUSD', 'FILUSD', 'MASKUSD', 'FORTHUSD', 'LSKUSD', 'MANAUSD', 'ADAUSD', 'FXSUSD', 'TONUSD', 'AVAXUSD', 'GMTUSD', 'SAGAUSD', 'SEIUSD', 'DOTUSD', 'ETCUSD', 'BLURUSD', 'ANKRUSD', 'WIFUSD']
 
 
@@ -67,7 +70,7 @@ def format_symbols(symbols):
         symbols = [s[:-1] for s in symbols]
     return [symbol.replace("USD", "/USD") for symbol in symbols]
 
-def upload_complete_market_data(data_size = 2200):
+def upload_complete_market_data():
     start_time = (dt.datetime.now() - dt.timedelta(hours= max_rows_market_data)).date()
     end_time = dt.datetime.now().date()
     timeframes = ['1w', '1d', '4h', '1h', '30m','15m', '5m', '1m']
@@ -80,12 +83,16 @@ def upload_complete_market_data(data_size = 2200):
 
 def complete_missing_data(data_instance, data):
     last_date_data = data.index.get_level_values(0).unique()[-1].tz_localize('UTC')
-    if dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) != last_date_data:
-        time_difference = dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - last_date_data
+    if dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours = 1) != last_date_data:
+        time_difference = dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours = 1) - last_date_data
         hours_difference = time_difference.total_seconds() / 3600 # Get the number of hours
+        if hours_difference < 3:
+            print(f'Changing the hours difference to 3 hours')
+            hours_difference = 3
         missing_data = fetch_latest_data(data_instance, limit = int(hours_difference) + 1)
         complete_data = pd.concat([data, missing_data])
         complete_data.index = complete_data.index.set_levels(pd.to_datetime(complete_data.index.levels[0]), level=0)
+        complete_data = complete_data[~complete_data.index.duplicated(keep='last')]
         complete_data.to_csv(market_data_filename)
         print('Market data updated successfully')
     else:
@@ -93,7 +100,7 @@ def complete_missing_data(data_instance, data):
         data.to_csv(market_data_filename)
         print('Market data updated successfully')
 
-def fetch_latest_data(data_instance, limit=2):
+def fetch_latest_data(data_instance, limit=3):
     """Fetch latest OHLCV data for multiple symbols and stack them into a single DataFrame."""
     
     formatted_symbols = format_symbols(symbols_to_trade)
@@ -106,7 +113,7 @@ def fetch_latest_data(data_instance, limit=2):
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             df.set_index('timestamp', inplace=True)
             df['coin'] = formatted_symbol
-            return df
+            return df[:-1]
         except Exception as e:
             print(f"Error fetching data for {symbol}: {e}")
             try:
@@ -116,7 +123,7 @@ def fetch_latest_data(data_instance, limit=2):
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df.set_index('timestamp', inplace=True)
                 df['coin'] = formatted_symbol
-                return df
+                return df[:-1]
             except Exception as e:
                 print(f"Error fetching data for {symbol} on retry: {e}")
                 return pd.DataFrame()
@@ -138,51 +145,7 @@ def fetch_latest_data(data_instance, limit=2):
         return df
     else:
         return pd.DataFrame()  # Return an empty DataFrame if no data
-        
-    # Append new data to CSV and maintain max length (asynchronous)
-def append_to_csv_with_limit(filename, latest, use_limit = True, last_row = True):
-    """_summary_
 
-    Args:
-        data (_type_): _description_
-        filename (_type_): _description_
-        max_rows (int, optional): _description_. Defaults to 2202. Should be account for the max number of rows needed for any of the processes
-    """
-    file_exists = os.path.isfile(filename)
-    
-    if len(latest) == 0:
-        print('No data to append', latest)
-        return
-    latest_data = latest.loc[latest.index.get_level_values(0).unique()[-1]]
-    last_index = [latest.index.get_level_values(0).unique()[-1]] * len(latest_data)
-    latest_data.index = pd.MultiIndex.from_tuples(zip(last_index, latest_data.index), names = ['date', ''])
-    
-    if file_exists and os.path.getsize(filename) > 0:
-        existing_df = pd.read_csv(filename, index_col=[0, 1], parse_dates=['date'])
-        print(f'Last date of the existing data inside the file: {existing_df.index.get_level_values(0).unique()[-1]}')
-        print(f'Last date of the latest data inside the file: {latest.index.get_level_values(0).unique()[-1]}')
-
-        if existing_df.index.get_level_values(0).unique()[-1] == latest.index.get_level_values(0).unique()[-1]:
-            return
-        
-        if last_row:
-            combined_df = pd.concat([existing_df, latest_data])
-        else:
-            combined_df = pd.concat([existing_df, latest])
-            
-        # Ensure the index is unique before unstacking
-        combined_df = combined_df[~combined_df.index.duplicated(keep='last')]
-
-        if len(combined_df) > max_rows_market_data and use_limit:
-            combined_df = combined_df.unstack().iloc[-max_rows_market_data:].stack(future_stack=True)
-            print('Sliced Combined Dataframe Successfully')
-        combined_df.to_csv(filename)
-    else:
-        print('File does not exist or is empty. Adding data to it.')
-        if last_row:
-            latest_data.to_csv(filename, mode='w', header=True)
-        else:
-            latest.to_csv(filename, mode = 'w', header=True)
         
 def load_data_from_csv():
     filename = market_data_filename
@@ -202,6 +165,15 @@ def load_data_from_csv():
         
 def get_portfolio_value():
     try:
+        #Opening a fresh new session for the exchange
+        exchange = ccxt.kraken({
+        'apiKey': api_key,
+        'secret': api_secret,
+        'options': {
+            'defaultType': 'spot',  # Ensure only spot markets are considered
+            }
+        })
+        
         # Fetch account balances
         balances = exchange.fetch_balance()
         # Fetch tickers to get the latest prices
@@ -231,6 +203,7 @@ def get_portfolio_value():
 current_total_balance = get_portfolio_value() #Testing kraken api connection
 print(f"Current Total Balance: {current_total_balance}")
 print(f"Uploading Data First for {len(symbols_to_trade)} symbols: {symbols_to_trade}")
+
 ################### Uploading Data ###################
 start_time = (dt.datetime.now() - dt.timedelta(hours= max_rows_market_data)).date()
 end_time = dt.datetime.now().date()
@@ -242,7 +215,6 @@ data = data_instance.df
 
 complete_missing_data(data_instance, data)
 #######################################################
-
 print('Data Uploaded, Now Loading Data')
 data = load_data_from_csv()
 print('Data Loaded')
@@ -253,12 +225,12 @@ live_strat_1_instance = Last_Days_Low(data, objective='multiple', train_size=tra
 live_strat_2_instance = Sprtrnd_Breakout(data, objective='multiple', train_size=train_size, test_size=test_size, step_size=step_size, live = True)
 cash_df = pd.DataFrame(data={'strategy': np.zeros(data.shape[0]), 'portfolio_value': np.ones(data.shape[0])}, index=data.index)
 strategy_map = {
-    'cash_strat': cash_df,
+    # 'cash_strat': cash_df,
     'strat_1': strat_1_instance,
     'strat_2': strat_2_instance
 }
 live_strategy_map = {
-    'cash_strat': cash_df,
+    # 'cash_strat': cash_df,
     'strat_1': live_strat_1_instance,
     'strat_2': live_strat_2_instance
 }
@@ -336,14 +308,15 @@ def liquidate(symbols_to_liquidate):
 
     except Exception as e:
         print(f"Error: {e}")
-def perform_portfolio_rm():
+        
+def perform_portfolio_rm(best_weights):
     
     if os.path.isfile(strategy_data_filename) and os.path.getsize(strategy_data_filename) > 0:
         try:
             current_strategy_returns_df = pd.read_csv(
                 strategy_data_filename,
-                index_col=[0, 1],
-                parse_dates=['date']
+                index_col=[0],
+                parse_dates=[0]
             )
         except pd.errors.EmptyDataError:
             print("The file is empty or has no valid data.")
@@ -355,6 +328,8 @@ def perform_portfolio_rm():
 
     if current_strategy_returns_df.empty or len(current_strategy_returns_df) < train_size + test_size:
         return False
+    print(f'Current Strategy Returns df found in the file: {current_strategy_returns_df}')
+    print(f'Best Weights: {best_weights}')
     portfolio_returns = current_strategy_returns_df.dot(best_weights)
     portfolio_returns_series = pd.Series(portfolio_returns)
     
@@ -379,7 +354,7 @@ def perform_portfolio_rm():
 
     if in_drawdown.iloc[-1]:
         #Liquidate the portfolio
-        print(f'Liquidating the portfolio because in_drawdown in {in_drawdown.iloc[-1]}')
+        print(f'Liquidating the portfolio because in_drawdown is {in_drawdown.iloc[-1]}')
         symbols_to_liquidate = symbols_in_current_balance()
         symbols_to_liquidate = [s.replace('USDT', '') for s in symbols_to_liquidate]
         liquidate(symbols_to_liquidate)
@@ -408,7 +383,7 @@ def run_wfo_and_get_results_returns():
     results_strategy_returns = {}
     for key, value in strategy_map.items():
         if key != 'cash_strat':
-            results_strategy_returns[key] = value.results.strategy
+            results_strategy_returns[key] = value.results.strategy.reindex(cash_df.index).fillna(0)
         elif key == 'cash_strat':
             results_strategy_returns[key] = value.strategy
     
@@ -431,7 +406,7 @@ def perform_portfolio_management(results_strategy_returns):
 
     selected_strategy = {key: value for key, value in strategy_map.items() if key in keys_for_selected_strategy}
     
-    live_selected_strategy = {key: value for key, value in live_strategy_map.items() if key in keys_for_selected_strategy}
+    live_selected_strategy = {key: value for key, value in live_strategy_map.items() if key in keys_for_selected_strategy and key != 'cash_strat'}
     
     return selected_strategy, live_selected_strategy
     
@@ -495,13 +470,14 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
             value.max_dollar_allocation = max_allocation_map.get(key, 0)
             print(f"Max Dollar Allocation for {key}: {value.max_dollar_allocation}")
         
-    print('Fetching latest market data...')
-    latest = fetch_latest_data(data_instance)
-    print('Fetching Done. Appending it to market data...')
-    append_to_csv_with_limit(market_data_filename, latest)
-    print('Appending done. Loading data...')
+    print('Loading Data...')
     data = load_data_from_csv()
-    print(f'Loading done. Data head: {data.head()}')
+    print('Data Loaded: ', data)
+    print('Completing missing data...')
+    complete_missing_data(data_instance, data)
+    
+    print('Data Uploaded, Now Loading Final Data.')
+    data = load_data_from_csv()
     
     
     #Run each strategy on enough data points and get the total portfolio value
@@ -516,7 +492,8 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
 
     for key, value in current_strategy_results.items():
         if 'strategy' in value.columns:
-            print(f'Strategy Column in {key}: {value["position"].tail()}')
+            print(f'Strategy Column is in {key}. Its strategy column tail: {value["strategy"].tail()}')
+            print(f'Its position column tail: {value["position"].tail()}')
         else:
             print(f'Strategy not in columns. All other columns for {key}: {value.head()}')
             
@@ -525,18 +502,32 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
         key: value['strategy']
         for key, value in current_strategy_results.items()
     }
-    
+
+    # Ensure alignment with `data_to_run_strategy` index
     for key, value in current_strategy_returns.items():
-        print(f"Strategy returns for {key}: {value}")
+        # Sum returns for the same datetime (level=0)
+        summed_value = value.groupby(level=0).sum()
+        print(f"Summed value for {key}: {summed_value}")
+
+        # Step 2: Reindex to align with `data_to_run_strategy` index
+        aligned_value = summed_value.reindex(data_to_run_strategy.index.get_level_values(0), level=0).fillna(0)
+
+        # Assign the aligned value back
+        current_strategy_returns[key] = aligned_value
+        print(f"Strategy returns for {key}: {aligned_value}")
     
-    #Append current strategy results to the csv file for future analysis
+    # Concatenate and sum by the first index (datetime)
     current_strategy_returns_df = pd.concat(current_strategy_returns, axis=1).fillna(0)
-    cash_strategy = cash_df['strategy'].reindex(current_strategy_returns_df.index).dropna()
-    current_allocation_results_df = pd.concat([current_strategy_returns_df, cash_strategy], axis=1).fillna(0)
+    # cash_strategy = cash_df['strategy'].reindex(current_strategy_returns_df.index).dropna()
+    # current_strategy_returns_df = pd.concat([current_strategy_returns_df, cash_strategy], axis=1).fillna(0)
     
     print(f'Current Strategy returns df: {current_strategy_returns_df}')
     print('Appending to Strategy returns data...')
-    append_to_csv_with_limit(strategy_data_filename, current_strategy_returns_df, use_limit = False, last_row = False)
+    current_strategy_returns_df = current_strategy_returns_df[~current_strategy_returns_df.index.duplicated(keep='last')]
+    if not os.path.isfile(strategy_data_filename) or os.path.getsize(strategy_data_filename) == 0:
+        current_strategy_returns_df.to_csv(strategy_data_filename)
+    else:
+        current_strategy_returns_df[-1:].to_csv(strategy_data_filename, mode='a', header=False)
     print(f'Appending Done.')
     
     
@@ -624,6 +615,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
         else:
             print(f"Nothing to add because {to_add} in coin's currency is almost $0.0")
             
+            
 def main_loop():
     # THE MAIN LOOP
     counter = 0
@@ -644,11 +636,11 @@ def main_loop():
         print('Adding to counter')
         counter += 1
         
-        data = pd.read_csv(market_data_filename, index_col=[0, 1], parse_dates=['date'])
+        data = load_data_from_csv()
         complete_missing_data(data_instance, data)
         print('Updating Data Before Portfolio RM')
 
-        if perform_portfolio_rm():
+        if perform_portfolio_rm(best_weights):
             print('Performed portfolio risk management, portfolio is in drawdown')
             now = dt.datetime.now()  # Skip running the strategy, go straight to time update
             print('Current time: ', now)
@@ -674,4 +666,4 @@ def main_loop():
         print('Running strategy')
         run_strategy(best_params, best_weights, live_selected_strategy)
         
-main_loop()
+# main_loop()
