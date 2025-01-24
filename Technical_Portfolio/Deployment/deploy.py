@@ -55,9 +55,10 @@ length_of_data_to_run_strategy = 500
 _symbols_threshold = 750 #Get new symbols every month
 market_data_filename = 'market_data.csv'
 strategy_data_filename = 'strategy_returns.csv'
+portfolio_returns_filename = "portfolio_returns.csv"
 timeframe = '1h'
-symbols_to_trade = get_symbols_for_bot()[:20]
-for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'SOLUSD', 'ADAUSD', 'DOTUSD']:
+symbols_to_trade = get_symbols_for_bot()
+for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD']:
     if symbol not in symbols_to_trade:
         symbols_to_trade.append(symbol)
 # symbols_to_trade = ['BTCUSD', 'ETHUSD', 'XRPUSD', 'SOLUSD', 'BONKUSD']
@@ -309,11 +310,10 @@ def liquidate(symbols_to_liquidate):
     except Exception as e:
         print(f"Error: {e}")
         
-def perform_portfolio_rm(best_weights):
-    
-    if os.path.isfile(strategy_data_filename) and os.path.getsize(strategy_data_filename) > 0:
+def perform_portfolio_rm():
+    if os.path.isfile(portfolio_returns_filename) and os.path.getsize(portfolio_returns_filename) > 0:
         try:
-            current_strategy_returns_df = pd.read_csv(
+            current_portfolio_returns_df = pd.read_csv(
                 strategy_data_filename,
                 index_col=[0],
                 parse_dates=[0]
@@ -322,39 +322,22 @@ def perform_portfolio_rm(best_weights):
             print("The file is empty or has no valid data.")
             return False
     else:
-        print(f"File {strategy_data_filename} does not exist or is empty.")
+        print(f"File {portfolio_returns_filename} does not exist or is empty.")
         return False
 
 
-    if current_strategy_returns_df.empty or len(current_strategy_returns_df) < train_size + test_size:
+    if current_portfolio_returns_df.empty or len(current_portfolio_returns_df) < train_size + test_size:
         return False
-    print(f'Current Strategy Returns df found in the file: {current_strategy_returns_df}')
-    print(f'Best Weights: {best_weights}')
-    portfolio_returns = current_strategy_returns_df.dot(best_weights)
-    portfolio_returns_series = pd.Series(portfolio_returns)
     
+    portfolio_returns_series = pd.Series(current_portfolio_returns_df)
     
-    # ######## Plotting the portfolio returns each loop ########
-    # plt.ion()  # Turn on interactive mode
-    # fig, ax = plt.subplots()
-    # portfolio_cumulative_returns = portfolio_returns.cumsum().apply(np.exp)
-
-    # # Update the plot data here
-    # ax.clear()  # Clear the previous plot
-    # portfolio_cumulative_returns.plot(ax=ax)  # Re-plot the data
-    # plt.draw()  # Update the plot with new data
-    # plt.pause(0.1)  # Pause for a short time to allow for updates
-    # ############################################################
-    
-    
-
     portfolio_rm_instance = Portfolio_RM(portfolio_returns_series)
 
     drawdown_limit, in_drawdown = portfolio_rm_instance.drawdown_limit(drawdown_threshold)
 
     if in_drawdown.iloc[-1]:
         #Liquidate the portfolio
-        print(f'Liquidating the portfolio because in_drawdown is {in_drawdown.iloc[-1]}')
+        print(f'Liquidating the portfolio because in_drawdown in {in_drawdown.iloc[-1]}')
         symbols_to_liquidate = symbols_in_current_balance()
         symbols_to_liquidate = [s.replace('USDT', '') for s in symbols_to_liquidate]
         liquidate(symbols_to_liquidate)
@@ -448,7 +431,8 @@ def perform_portfolio_optimization():
     
     return best_weights, results_strategy_returns
 
-def run_strategy(best_params, best_weights, live_selected_strategy):
+
+def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown):
     #Get the current_total_balance
     current_total_balance = get_portfolio_value()
     
@@ -456,6 +440,9 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
     print(f"Current Total Balance: {current_total_balance}")
     print(f"Live Selected Strategy: {live_selected_strategy}")
     print(f'Best Params: {best_params}')
+    
+    
+    ################### Max Allocation ###################
     #Store the max allocation for each strategy in a dictionary
     max_allocation_map = {
         key: best_weights[i] * current_total_balance / strategy.max_universe
@@ -469,7 +456,8 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
         if key != 'cash_strat':
             value.max_dollar_allocation = max_allocation_map.get(key, 0)
             print(f"Max Dollar Allocation for {key}: {value.max_dollar_allocation}")
-        
+    
+    ####################### Preparing Data #######################
     print('Loading Data...')
     data = load_data_from_csv()
     print('Data Loaded: ', data)
@@ -484,6 +472,8 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
     data_to_run_strategy = data.unstack().iloc[-length_of_data_to_run_strategy:].stack(future_stack = True)
     print(f'Data to run the strategy on: {data_to_run_strategy}')
     
+    
+    ################### Running Strategy on Data ###################
     current_strategy_results = {
         key: value.trading_strategy(data_to_run_strategy, best_params[key])
         for key, value in live_selected_strategy.items()
@@ -498,6 +488,8 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
             print(f'Strategy not in columns. All other columns for {key}: {value.head()}')
             
     
+    
+    ################### Strategy Returns ###################
     current_strategy_returns = {
         key: value['strategy']
         for key, value in current_strategy_results.items()
@@ -527,10 +519,27 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
     if not os.path.isfile(strategy_data_filename) or os.path.getsize(strategy_data_filename) == 0:
         current_strategy_returns_df.to_csv(strategy_data_filename)
     else:
-        current_strategy_returns_df[-1:].to_csv(strategy_data_filename, mode='a', header=False)
+        current_strategy_returns_df[-1:].to_csv(strategy_data_filename, mode='a', header=False, index = True, date_format='%Y-%m-%d %H:%M:%S')
     print(f'Appending Done.')
     
     
+    ################### Portfolio Returns ###################
+    current_portfolio_returns = current_strategy_returns_df.dot(best_weights)
+    print(f'Current Portfolio Returns: {current_portfolio_returns}')
+    if not os.path.isfile(portfolio_returns_filename) or os.path.getsize(portfolio_returns_filename) == 0:
+        current_portfolio_returns.to_csv(portfolio_returns_filename)
+    else:
+        current_portfolio_returns[-1:].to_csv(portfolio_returns_filename, mode='a', header=False, index = True, date_format='%Y-%m-%d %H:%M:%S')
+    
+    #################### Checking in Drawdown ################
+    
+    if in_drawdown:
+        print('In Drawdown, Skipping Current Allocations, Universe, and Order placement...')
+        return
+    else:
+        print('Not in Drawdown, Proceeding with Current Allocations, Universe, and Order placement...')
+    
+    ################### Current Allocations ###################
     #Getting the allocation
     current_allocation_strategy_map = {
         key: value['coin_amount_to_bought']
@@ -551,7 +560,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
     else:
         print(f'Current allocation results df is empty')
 
-    
+    ######################### Universe ##########################
     # Extract current universes from selected_strategy
     print('Getting Universe')
     current_universes = [
@@ -579,6 +588,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy):
     symbols_in_current_portfolio = symbols_in_current_balance()
     print(f'Symbols in Current balance: {symbols_in_current_portfolio}')
     
+    ################### Order Placement ###################
     # Ensure symbols_in_current_portfolio is not None
     if symbols_in_current_portfolio:
         symbols_not_in_universe = [
@@ -637,23 +647,16 @@ def main_loop():
         counter += 1
         
         data = load_data_from_csv()
+        print('Data Loaded: ', data)
         complete_missing_data(data_instance, data)
         print('Updating Data Before Portfolio RM')
 
-        if perform_portfolio_rm(best_weights):
-            print('Performed portfolio risk management, portfolio is in drawdown')
-            now = dt.datetime.now()  # Skip running the strategy, go straight to time update
-            print('Current time: ', now)
-            next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
-            print('Next hour: ', next_hour)
-            sleep_duration = (next_hour - now).total_seconds()
-            print('Sleep duration: ', sleep_duration)
-            time.sleep(sleep_duration)
-            continue  # Skip the strategy execution and restart the loop
-        else:
-            print('Portfolio is not in drawdown')
+        in_dradown = perform_portfolio_rm()
         
-
+        if in_dradown:
+            print('Performed portfolio risk management, portfolio is in drawdown')
+        
+                
         #Perform the strategy after each hour
         now = dt.datetime.now()
         print('Current time: ', now)
@@ -664,6 +667,9 @@ def main_loop():
         time.sleep(sleep_duration)
         
         print('Running strategy')
-        run_strategy(best_params, best_weights, live_selected_strategy)
+        print(f'Best Params: {best_params}')
+        run_strategy(best_params, best_weights, live_selected_strategy, in_dradown)
+
+        
         
 # main_loop()
