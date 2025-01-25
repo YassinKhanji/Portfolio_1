@@ -58,7 +58,7 @@ strategy_data_filename = 'strategy_returns.csv'
 portfolio_returns_filename = "portfolio_returns.csv"
 timeframe = '1h'
 symbols_to_trade = get_symbols_for_bot()
-for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD']:
+for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'ETCUSD', 'LINKUSD']:
     if symbol not in symbols_to_trade:
         symbols_to_trade.append(symbol)
 # symbols_to_trade = ['BTCUSD', 'ETHUSD', 'XRPUSD', 'SOLUSD', 'BONKUSD']
@@ -273,9 +273,28 @@ def get_usd_left():
         
 def buy(to_add, coin):
     try:
+        #Get the minimum amount to buy
+        min_amount = exchange.markets[coin]['limits']['amount']['min']
         
+        if to_add < min_amount:
+            print(f"Amount to add is less than the minimum amount to buy: {min_amount}")
+            to_add = min_amount
+            
         order = exchange.create_market_buy_order(coin, to_add)
         print(f"Buy order placed: {order}")
+        
+    except ccxt.InsufficientFunds as e:
+        print(f"Insufficient funds: {e}")
+        #Get current balance (free usd)
+        balance_in_usd = exchange.fetch_balance()['free']['USD']
+        #Get the price of the coin
+        price = exchange.fetch_ticker(coin)['last']
+        #Calculate the amount to buy (we want to buy everything we got left in USD)
+        amount_to_buy = balance_in_usd / price
+        #Place the order
+        order = exchange.create_market_buy_order(coin, amount_to_buy)
+        print(f"Buy order placed: {order}")
+        
     except Exception as e:
         print(f"Error: {e}")
         
