@@ -48,9 +48,9 @@ drawdown_threshold = -0.15
 max_rows_market_data = market_data_size = 2000
 length_of_data_to_run_strategy = 500
 _symbols_threshold = 750 #Get new symbols every month
-market_data_filename = 'market_data_test.csv'
-strategy_data_filename = 'strategy_returns_test.csv'
-portfolio_returns_filename = "portfolio_returns_test.csv"
+market_data_filename = 'market_data.csv'
+strategy_data_filename = 'strategy_returns.csv'
+portfolio_returns_filename = "portfolio_returns.csv"
 timeframe = '1h'
 symbols_to_trade = get_symbols_for_bot()
 for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'TRUMPUSD']:
@@ -685,6 +685,14 @@ def main_loop():
                 run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
                 # Increment counter 
                 counter += 1
+                print(f"Completed loop iteration {counter}. Current state after tasks:")
+                print(f"  best_params: {best_params}")
+                print(f"  best_weights: {best_weights}")
+                print(f"  results_strategy_returns: {results_strategy_returns}")
+                print(f"  selected_strategy: {selected_strategy}")
+                print(f"  live_selected_strategy: {live_selected_strategy}")
+                print(f"  in_drawdown: {in_drawdown}")
+                print(f"--- End of loop iteration {counter} ---\n")
 
         # Check if optimization tasks are complete
         if optimization_task is not None and optimization_task.done():
@@ -703,16 +711,6 @@ def main_loop():
             portfolio_management_task = perform_portfolio_management(results_strategy_returns)
             selected_strategy, live_selected_strategy = portfolio_management_task.result()
             print(f"Portfolio management task completed. Updated selected_strategy: {selected_strategy}, live_selected_strategy: {live_selected_strategy}")
-
-
-        print(f"Completed loop iteration {counter}. Current state after tasks:")
-        print(f"  best_params: {best_params}")
-        print(f"  best_weights: {best_weights}")
-        print(f"  results_strategy_returns: {results_strategy_returns}")
-        print(f"  selected_strategy: {selected_strategy}")
-        print(f"  live_selected_strategy: {live_selected_strategy}")
-        print(f"  in_drawdown: {in_drawdown}")
-        print(f"--- End of loop iteration {counter} ---\n")
 
         # Small sleep to avoid maxing out the CPU while waiting for the next loop iteration
         time.sleep(1)
