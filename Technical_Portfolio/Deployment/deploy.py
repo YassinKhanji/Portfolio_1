@@ -660,13 +660,6 @@ def main_loop():
 
     while True:
         print(f"\n--- Starting loop iteration {counter} ---")
-        print(f"Current state before tasks:")
-        print(f"  best_params: {best_params}")
-        print(f"  best_weights: {best_weights}")
-        print(f"  results_strategy_returns: {results_strategy_returns}")
-        print(f"  selected_strategy: {selected_strategy}")
-        print(f"  live_selected_strategy: {live_selected_strategy}")
-        print(f"  in_drawdown: {in_drawdown}")
 
         # Start optimization tasks in the background if not already running
         if counter % strategy_optimization_frequency == 0 and optimization_task is None:
