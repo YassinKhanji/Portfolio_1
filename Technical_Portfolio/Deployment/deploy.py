@@ -8,8 +8,9 @@ import datetime as dt
 import sys
 from concurrent.futures import ThreadPoolExecutor
 import warnings
-import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
+# import logging
+# logging.basicConfig(level=print, format='%(asctime)s - %(message)s')
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Portfolio_Optimization')))
@@ -42,27 +43,21 @@ strategy_optimization_frequency = step_size
 portfolio_optimization_frequency = 300 #Every 2 Weeks
 portfolio_management_frequency = 4400 #Around 6 months
 counter = 0
-best_params = None
-best_weights = None
 symbols_to_liquidate = None
-selected_strategy = None
-live_selected_strategy = None
-data_instance = None
-results_strategy_returns_ = None
 drawdown_threshold = -0.15
 max_rows_market_data = market_data_size = 2000
 length_of_data_to_run_strategy = 500
 _symbols_threshold = 750 #Get new symbols every month
-market_data_filename = 'market_data.csv'
-strategy_data_filename = 'strategy_returns.csv'
-portfolio_returns_filename = "portfolio_returns.csv"
+market_data_filename = 'market_data_test.csv'
+strategy_data_filename = 'strategy_returns_test.csv'
+portfolio_returns_filename = "portfolio_returns_test.csv"
 timeframe = '1h'
 symbols_to_trade = get_symbols_for_bot()
-for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'ETCUSD', 'LINKUSD']:
+for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'TRUMPUSD']:
     if symbol not in symbols_to_trade:
         symbols_to_trade.append(symbol)
 # symbols_to_trade = ['BTCUSD', 'ETHUSD', 'XRPUSD', 'SOLUSD', 'BONKUSD']
-# symbols_to_trade = ['STORJUSD', 'MINAUSD', 'TRXUSD', 'RADUSD', 'TAOUSD', 'OGNUSD', 'IMXUSD', 'ZKUSD', 'FILUSD', 'MASKUSD', 'FORTHUSD', 'LSKUSD', 'MANAUSD', 'ADAUSD', 'FXSUSD', 'TONUSD', 'AVAXUSD', 'GMTUSD', 'SAGAUSD', 'SEIUSD', 'DOTUSD', 'ETCUSD', 'BLURUSD', 'ANKRUSD', 'WIFUSD']
+# symbols_to_trade = ['ZRXUSD', 'GMTUSD', 'ZECUSD', 'ICPUSD', 'TONUSD', 'RLCUSD', 'COTIUSD', 'OGNUSD', 'BONKUSD', 'RENDERUSD', 'DENTUSD', 'STRKUSD', 'SYNUSD', 'MOVRUSD', 'EIGENUSD', 'MINAUSD', 'BLURUSD', 'PONDUSD', 'SUIUSD', 'PNUTUSD', 'FXSUSD', 'STGUSD', 'SHIBUSD', 'RADUSD', 'DYMUSD', 'LPTUSD', 'OXTUSD', 'LSKUSD', 'STXUSD', 'BTCUSD', 'STORJUSD', 'FIDAUSD', 'CELRUSD', 'MASKUSD', 'DOGEUSD', 'TURBOUSD', 'ZKUSD', 'ENJUSD', 'TRXUSD', 'AUDIOUSD', 'ICXUSD', 'API3USD', 'ETCUSD', 'IMXUSD', 'ARBUSD', 'DASHUSD', 'RUNEUSD', 'GLMRUSD', 'MEMEUSD', 'WIFUSD', 'XRPUSD', 'ETHUSD', 'TRUMPUSD']
 
 
 def format_symbols(symbols):
@@ -328,7 +323,8 @@ def liquidate(symbols_to_liquidate):
 
     except Exception as e:
         print(f"Error: {e}")
-        
+
+@unsync
 def perform_portfolio_rm():
     if os.path.isfile(portfolio_returns_filename) and os.path.getsize(portfolio_returns_filename) > 0:
         try:
@@ -390,6 +386,8 @@ def run_wfo_and_get_results_returns():
             results_strategy_returns[key] = value.strategy
     
     return results_strategy_returns
+
+@unsync
 def perform_portfolio_management(results_strategy_returns):
     """_summary_
 
@@ -412,6 +410,7 @@ def perform_portfolio_management(results_strategy_returns):
     
     return selected_strategy, live_selected_strategy
     
+@unsync
 def perform_optimization():
     """_summary_
 
@@ -428,7 +427,8 @@ def perform_optimization():
     best_params = {key: value.best_params for key, value in strategy_map.items() if key != 'cash_strat'}
     
     return best_params
-    
+
+@unsync
 def perform_portfolio_optimization():
     """_summary_
 
@@ -644,51 +644,77 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
         else:
             print(f"Nothing to add because {to_add} in coin's currency is almost $0.0")
             
-            
+        
+        
 def main_loop():
-    # THE MAIN LOOP
     counter = 0
+    best_params = None
+    best_weights = None
+    results_strategy_returns = None
+    selected_strategy = None
+    live_selected_strategy = None
+    in_drawdown = None
+    optimization_task = None
+    portfolio_optimization_task = None
+    portfolio_management_task = None
+
     while True:
+        print(f"\n--- Starting loop iteration {counter} ---")
+        print(f"Current state before tasks:")
+        print(f"  best_params: {best_params}")
+        print(f"  best_weights: {best_weights}")
+        print(f"  results_strategy_returns: {results_strategy_returns}")
+        print(f"  selected_strategy: {selected_strategy}")
+        print(f"  live_selected_strategy: {live_selected_strategy}")
+        print(f"  in_drawdown: {in_drawdown}")
 
-        if counter % strategy_optimization_frequency == 0:
-            print('Performing optimization')
-            best_params = perform_optimization()
+        # Start optimization tasks in the background if not already running
+        if counter % strategy_optimization_frequency == 0 and optimization_task is None:
+            optimization_task = perform_optimization()
 
-        if counter % portfolio_optimization_frequency == 0:
-            print('Performing portfolio optimization')
-            best_weights, results_strategy_returns = perform_portfolio_optimization()
+        if counter % portfolio_optimization_frequency == 0 and portfolio_optimization_task is None:
+            portfolio_optimization_task = perform_portfolio_optimization()
+            
 
-        if counter % portfolio_management_frequency == 0:
-            print('Performing portfolio management')
-            selected_strategy, live_selected_strategy = perform_portfolio_management(results_strategy_returns)
-        
-        print('Adding to counter')
-        counter += 1
-        
-        data = load_data_from_csv()
-        print('Data Loaded: ', data)
-        complete_missing_data(data_instance, data)
-        print('Updating Data Before Portfolio RM')
-
-        in_dradown = perform_portfolio_rm()
-        
-        if in_dradown:
-            print('Performed portfolio risk management, portfolio is in drawdown')
-        
-                
-        #Perform the strategy after each hour
+        # Perform strategy execution at the beginning of each hour
         now = dt.datetime.now()
-        print('Current time: ', now)
-        next_hour = (now + dt.timedelta(hours=1)).replace(minute = 0, second=0, microsecond=0)
-        print('Next hour: ', next_hour)
-        sleep_duration = (next_hour - now).total_seconds()
-        print('Sleep duration: ', sleep_duration)
-        time.sleep(sleep_duration)
-        
-        print('Running strategy')
-        print(f'Best Params: {best_params}')
-        run_strategy(best_params, best_weights, live_selected_strategy, in_dradown)
+        if now.minute == 0:  # Check if it's the start of a new hour
+            print("Starting strategy execution at the beginning of the hour...")
+            if best_params is not None and best_weights is not None and live_selected_strategy is not None:
+                in_drawdown = perform_portfolio_rm().result()
+                run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
+                # Increment counter 
+                counter += 1
 
-        
+        # Check if optimization tasks are complete
+        if optimization_task is not None and optimization_task.done():
+            best_params = optimization_task.result()
+            print(f"Optimization task completed. Updated best_params: {best_params}")
+            optimization_task = None  # Reset the task for the next round
+
+        if portfolio_optimization_task is not None and portfolio_optimization_task.done():
+            best_weights, results_strategy_returns = portfolio_optimization_task.result()
+            print(f"Portfolio optimization task completed. Updated best_weights: {best_weights}, results_strategy_returns: {results_strategy_returns}")
+            portfolio_optimization_task = None  # Reset the task for the next round
+
+        # Check if portfolio management task is complete
+        if counter % portfolio_management_frequency == 0 and results_strategy_returns is not None:
+            print("Starting portfolio management task...")
+            portfolio_management_task = perform_portfolio_management(results_strategy_returns)
+            selected_strategy, live_selected_strategy = portfolio_management_task.result()
+            print(f"Portfolio management task completed. Updated selected_strategy: {selected_strategy}, live_selected_strategy: {live_selected_strategy}")
+
+
+        print(f"Completed loop iteration {counter}. Current state after tasks:")
+        print(f"  best_params: {best_params}")
+        print(f"  best_weights: {best_weights}")
+        print(f"  results_strategy_returns: {results_strategy_returns}")
+        print(f"  selected_strategy: {selected_strategy}")
+        print(f"  live_selected_strategy: {live_selected_strategy}")
+        print(f"  in_drawdown: {in_drawdown}")
+        print(f"--- End of loop iteration {counter} ---\n")
+
+        # Small sleep to avoid maxing out the CPU while waiting for the next loop iteration
+        time.sleep(1)
         
 # main_loop()
