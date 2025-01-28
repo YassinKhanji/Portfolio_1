@@ -7,25 +7,24 @@ from unsync import unsync
 import datetime as dt
 import sys
 from concurrent.futures import ThreadPoolExecutor
+import re
 import warnings
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
-# import logging
-# logging.basicConfig(level=print, format='%(asctime)s - %(message)s')
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Data_Management')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Portfolio_Optimization')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Trend_Following')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Strategies', 'Mean_Reversion')))
+# Ensure the directories are in the system path
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Data_Management'))) 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Portfolio_Optimization'))) 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Strategies', 'Trend_Following')))
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'Strategies', 'Mean_Reversion')))
 
 # Import the modules
 from data import Data, get_symbols_for_bot
+from fetch_symbols import get_symbols
 from sprtrnd_breakout import Sprtrnd_Breakout
 from last_days_low import Last_Days_Low
 from portfolio_management import Portfolio_Management
 from portfolio_optimization import Portfolio_Optimization
 from portfolio_risk_management import Portfolio_RM
-
-
 api_key = 'yqPWrtVuElaIExKmIp/E/upTOz/to1x7tC3JoFUxoSTKWCOorT6ifF/B'
 api_secret = 'L8h5vYoAu/jpQiBROA9yKN41FGwZAGGVF3nfrC5f5EiaoF7VksruPVdD7x1VOwnyyNCMdrGnT8lP4xHTiBrYMQ=='
 exchange = ccxt.kraken({
@@ -44,6 +43,7 @@ portfolio_optimization_frequency = 300 #Every 2 Weeks
 portfolio_management_frequency = 4400 #Around 6 months
 counter = 0
 symbols_to_liquidate = None
+data_instance = None
 drawdown_threshold = -0.15
 max_rows_market_data = market_data_size = 2000
 length_of_data_to_run_strategy = 500
@@ -53,12 +53,11 @@ strategy_data_filename = 'strategy_returns.csv'
 portfolio_returns_filename = "portfolio_returns.csv"
 timeframe = '1h'
 symbols_to_trade = get_symbols_for_bot()
-for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'TRUMPUSD']:
+for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD']:
     if symbol not in symbols_to_trade:
         symbols_to_trade.append(symbol)
-# symbols_to_trade = ['BTCUSD', 'ETHUSD', 'XRPUSD', 'SOLUSD', 'BONKUSD']
-# symbols_to_trade = ['ZRXUSD', 'GMTUSD', 'ZECUSD', 'ICPUSD', 'TONUSD', 'RLCUSD', 'COTIUSD', 'OGNUSD', 'BONKUSD', 'RENDERUSD', 'DENTUSD', 'STRKUSD', 'SYNUSD', 'MOVRUSD', 'EIGENUSD', 'MINAUSD', 'BLURUSD', 'PONDUSD', 'SUIUSD', 'PNUTUSD', 'FXSUSD', 'STGUSD', 'SHIBUSD', 'RADUSD', 'DYMUSD', 'LPTUSD', 'OXTUSD', 'LSKUSD', 'STXUSD', 'BTCUSD', 'STORJUSD', 'FIDAUSD', 'CELRUSD', 'MASKUSD', 'DOGEUSD', 'TURBOUSD', 'ZKUSD', 'ENJUSD', 'TRXUSD', 'AUDIOUSD', 'ICXUSD', 'API3USD', 'ETCUSD', 'IMXUSD', 'ARBUSD', 'DASHUSD', 'RUNEUSD', 'GLMRUSD', 'MEMEUSD', 'WIFUSD', 'XRPUSD', 'ETHUSD', 'TRUMPUSD']
-
+# symbols_to_trade = ['BTCUSD', 'ETHUSD']
+# symbols_to_trade = ['DYMUSD', 'BONKUSD', 'ZECUSD', 'MINAUSD', 'API3USD', 'SOLUSD', 'LTCUSD', 'ENJUSD', 'BLURUSD', 'RENDERUSD', 'ETCUSD', 'POLUSD', 'LINKUSD', 'FORTHUSD', 'STGUSD', 'LRCUSD', 'ZROUSD', 'XRPUSD', 'DENTUSD', 'SYNUSD', 'FXSUSD', 'DOGEUSD', 'CTSIUSD', 'SHIBUSD', 'WIFUSD', 'TURBOUSD', 'LPTUSD', 'ANKRUSD', 'STXUSD', 'BANDUSD', 'FTMUSD', 'JASMYUSD', 'AUDIOUSD', 'RAREUSD', 'TIAUSD', 'STRKUSD', 'OPUSD', 'FLOWUSD', 'STORJUSD', 'ARKMUSD', 'ENSUSD', 'ICXUSD', 'LSKUSD', 'CHRUSD', 'ARBUSD', 'DASHUSD', 'ZKUSD', 'BTCUSD', 'GMTUSD', 'ATOMUSD', 'ETHUSD']
 
 def format_symbols(symbols):
     """Converts the symbols to a format that the exchange understands."""
@@ -96,7 +95,7 @@ def complete_missing_data(data_instance, data):
         data.to_csv(market_data_filename)
         print('Market data updated successfully')
 
-def fetch_latest_data(data_instance, limit=3):
+def fetch_latest_data(data_instance, limit=3, include_last = False):
     """Fetch latest OHLCV data for multiple symbols and stack them into a single DataFrame."""
     
     formatted_symbols = format_symbols(symbols_to_trade)
@@ -109,7 +108,10 @@ def fetch_latest_data(data_instance, limit=3):
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             df.set_index('timestamp', inplace=True)
             df['coin'] = formatted_symbol
-            return df[:-1]
+            if not include_last:
+                return df[:-1]
+            else:
+                return df
         except Exception as e:
             print(f"Error fetching data for {symbol}: {e}")
             try:
@@ -119,7 +121,10 @@ def fetch_latest_data(data_instance, limit=3):
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df.set_index('timestamp', inplace=True)
                 df['coin'] = formatted_symbol
-                return df[:-1]
+                if not include_last:
+                    return df[:-1]
+                else:
+                    return df
             except Exception as e:
                 print(f"Error fetching data for {symbol} on retry: {e}")
                 return pd.DataFrame()
@@ -141,7 +146,51 @@ def fetch_latest_data(data_instance, limit=3):
         return df
     else:
         return pd.DataFrame()  # Return an empty DataFrame if no data
+        
+    # Append new data to CSV and maintain max length (asynchronous)
+def append_to_csv_with_limit(filename, latest, use_limit = True, last_row = True):
+    """_summary_
 
+    Args:
+        data (_type_): _description_
+        filename (_type_): _description_
+        max_rows (int, optional): _description_. Defaults to 2202. Should be account for the max number of rows needed for any of the processes
+    """
+    file_exists = os.path.isfile(filename)
+    
+    if len(latest) == 0:
+        print('No data to append', latest)
+        return
+    latest_data = latest.loc[latest.index.get_level_values(0).unique()[-1]]
+    last_index = [latest.index.get_level_values(0).unique()[-1]] * len(latest_data)
+    latest_data.index = pd.MultiIndex.from_tuples(zip(last_index, latest_data.index), names = ['date', ''])
+    
+    if file_exists and os.path.getsize(filename) > 0:
+        existing_df = pd.read_csv(filename, index_col=[0, 1], parse_dates=[0])
+        print(f'Last date of the existing data inside the file: {existing_df.index.get_level_values(0).unique()[-1]}')
+        print(f'Last date of the latest data inside the file: {latest.index.get_level_values(0).unique()[-1]}')
+
+        if existing_df.index.get_level_values(0).unique()[-1] == latest.index.get_level_values(0).unique()[-1]:
+            return
+        
+        if last_row:
+            combined_df = pd.concat([existing_df, latest_data])
+        else:
+            combined_df = pd.concat([existing_df, latest])
+            
+        # Ensure the index is unique before unstacking
+        combined_df = combined_df[~combined_df.index.duplicated(keep='last')]
+
+        if len(combined_df) > max_rows_market_data and use_limit:
+            combined_df = combined_df.unstack().iloc[-max_rows_market_data:].stack(future_stack=True)
+            print('Sliced Combined Dataframe Successfully')
+        combined_df.to_csv(filename)
+    else:
+        print('File does not exist or is empty. Adding data to it.')
+        if last_row:
+            latest_data.to_csv(filename, mode='w', header=True)
+        else:
+            latest.to_csv(filename, mode = 'w', header=True)
         
 def load_data_from_csv():
     filename = market_data_filename
@@ -158,7 +207,6 @@ def load_data_from_csv():
             print(f'File does not exist or is empty: {e}')
     else:
         print(f'The file is empty or does not exist')
-        
 def get_portfolio_value():
     try:
         #Opening a fresh new session for the exchange
@@ -190,27 +238,26 @@ def get_portfolio_value():
                             portfolio_value += balance * price
 
         return round(portfolio_value, 2)
-
+    
     except ccxt.BaseError as e:
         print(f"An error occurred: {str(e)}")
         return None
-    
-    
 current_total_balance = get_portfolio_value() #Testing kraken api connection
 print(f"Current Total Balance: {current_total_balance}")
 print(f"Uploading Data First for {len(symbols_to_trade)} symbols: {symbols_to_trade}")
-
 ################### Uploading Data ###################
 start_time = (dt.datetime.now() - dt.timedelta(hours= max_rows_market_data)).date()
 end_time = dt.datetime.now().date()
 timeframes = ['1w', '1d', '4h', '1h', '30m','15m', '5m', '1m']
 index = 3 #It is better to choose the highest frequency for the backtest to be able to downsample
 interval = timeframes[index]
-data_instance = Data(symbols_to_trade, interval, start_time, end_time, exchange = 'kraken')
+data_instance = Data(symbols_to_trade, interval, start_time, end_time, exchange = 'kraken', get_data = True)
 data = data_instance.df
+print(f'Data Shape: {data.shape}')
 
 complete_missing_data(data_instance, data)
 #######################################################
+
 print('Data Uploaded, Now Loading Data')
 data = load_data_from_csv()
 print('Data Loaded')
@@ -230,7 +277,6 @@ live_strategy_map = {
     'strat_1': live_strat_1_instance,
     'strat_2': live_strat_2_instance
 }
-
 ############ Helper Methods ############
 def symbols_in_current_balance():
     # Fetch account balance
@@ -323,13 +369,11 @@ def liquidate(symbols_to_liquidate):
 
     except Exception as e:
         print(f"Error: {e}")
-
-@unsync
 def perform_portfolio_rm():
     if os.path.isfile(portfolio_returns_filename) and os.path.getsize(portfolio_returns_filename) > 0:
         try:
             current_portfolio_returns_df = pd.read_csv(
-                strategy_data_filename,
+                portfolio_returns_filename,
                 index_col=[0],
                 parse_dates=[0]
             )
@@ -341,11 +385,13 @@ def perform_portfolio_rm():
         return False
 
 
-    if current_portfolio_returns_df.empty or len(current_portfolio_returns_df) < train_size + test_size:
+    if current_portfolio_returns_df.empty or len(current_portfolio_returns_df) < length_of_data_to_run_strategy:
+        print(f"Portfolio returns data is empty or not large enough. Its size: {len(current_portfolio_returns_df)}")
         return False
-    
-    portfolio_returns_series = pd.Series(current_portfolio_returns_df)
-    
+    print(f'Current Portfolio Returns: {current_portfolio_returns_df}')
+    portfolio_returns_series = current_portfolio_returns_df.iloc[:, 0]
+    print(f'Portfolio Returns Series: {portfolio_returns_series}')
+
     portfolio_rm_instance = Portfolio_RM(portfolio_returns_series)
 
     drawdown_limit, in_drawdown = portfolio_rm_instance.drawdown_limit(drawdown_threshold)
@@ -386,7 +432,6 @@ def run_wfo_and_get_results_returns():
             results_strategy_returns[key] = value.strategy
     
     return results_strategy_returns
-
 @unsync
 def perform_portfolio_management(results_strategy_returns):
     """_summary_
@@ -397,9 +442,10 @@ def perform_portfolio_management(results_strategy_returns):
     """
     if counter % portfolio_optimization_frequency == 0:
         print('Already have the results strategy returns from the portfolio optimization, Skipping the WFO Process...')
-    else:
+    elif results_strategy_returns is None:
         results_strategy_returns = run_wfo_and_get_results_returns()
 
+    print('results_strategy_returns:', results_strategy_returns)
     portfolio_management = Portfolio_Management(results_strategy_returns)
 
     keys_for_selected_strategy = portfolio_management.filter_by_correlation(low_corr_threshold= low_corr_thresh).columns
@@ -409,7 +455,6 @@ def perform_portfolio_management(results_strategy_returns):
     live_selected_strategy = {key: value for key, value in live_strategy_map.items() if key in keys_for_selected_strategy and key != 'cash_strat'}
     
     return selected_strategy, live_selected_strategy
-    
 @unsync
 def perform_optimization():
     """_summary_
@@ -427,7 +472,7 @@ def perform_optimization():
     best_params = {key: value.best_params for key, value in strategy_map.items() if key != 'cash_strat'}
     
     return best_params
-
+    
 @unsync
 def perform_portfolio_optimization():
     """_summary_
@@ -449,7 +494,6 @@ def perform_portfolio_optimization():
     best_weights = portfolio_optimization_instance.optimize_weights_minimize(train_data)
     
     return best_weights, results_strategy_returns
-
 
 def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown):
     #Get the current_total_balance
@@ -485,10 +529,12 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     
     print('Data Uploaded, Now Loading Final Data.')
     data = load_data_from_csv()
+    latest_data = fetch_latest_data(data_instance, limit = 2, include_last=True) #We need the current data to get the exit signals
+    data = pd.concat([load_data_from_csv(), latest_data])
     
     
     #Run each strategy on enough data points and get the total portfolio value
-    data_to_run_strategy = data.unstack().iloc[-length_of_data_to_run_strategy:].stack(future_stack = True)
+    data_to_run_strategy = data.unstack().iloc[-2 * length_of_data_to_run_strategy:].stack(future_stack = True)
     print(f'Data to run the strategy on: {data_to_run_strategy}')
     
     
@@ -535,10 +581,14 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     print(f'Current Strategy returns df: {current_strategy_returns_df}')
     print('Appending to Strategy returns data...')
     current_strategy_returns_df = current_strategy_returns_df[~current_strategy_returns_df.index.duplicated(keep='last')]
+    
     if not os.path.isfile(strategy_data_filename) or os.path.getsize(strategy_data_filename) == 0:
-        current_strategy_returns_df.to_csv(strategy_data_filename)
-    else:
-        current_strategy_returns_df[-1:].to_csv(strategy_data_filename, mode='a', header=False, index = True, date_format='%Y-%m-%d %H:%M:%S')
+        current_strategy_returns_df[:-1].to_csv(strategy_data_filename)
+        
+    elif pd.read_csv(strategy_data_filename, index_col=[0], parse_dates=[0]).index[-1] != current_strategy_returns_df.index[-2:-1]:
+        print(f"Last index in Strategy data: {pd.read_csv(strategy_data_filename, index_col=[0], parse_dates=[0]).index[-1]}")
+        print(f"Last index in current strategy returns: {current_strategy_returns_df.index[-1]}")
+        current_strategy_returns_df[-2:-1].to_csv(strategy_data_filename, mode='a', header=False, index = True, date_format='%Y-%m-%d %H:%M:%S')
     print(f'Appending Done.')
     
     
@@ -546,9 +596,12 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     current_portfolio_returns = current_strategy_returns_df.dot(best_weights)
     print(f'Current Portfolio Returns: {current_portfolio_returns}')
     if not os.path.isfile(portfolio_returns_filename) or os.path.getsize(portfolio_returns_filename) == 0:
-        current_portfolio_returns.to_csv(portfolio_returns_filename)
-    else:
-        current_portfolio_returns[-1:].to_csv(portfolio_returns_filename, mode='a', header=False, index = True, date_format='%Y-%m-%d %H:%M:%S')
+        current_portfolio_returns[:-1].to_csv(portfolio_returns_filename) #[:-1] to exclude the last row which is the current price, and not a fully closed candle
+        
+    elif pd.read_csv(portfolio_returns_filename, index_col=[0], parse_dates=[0]).index[-1] != current_portfolio_returns.index[-2:-1]:
+        print(f"Last index in Portfolio data: {pd.read_csv(portfolio_returns_filename, index_col=[0], parse_dates=[0]).index[-1]}")
+        print(f"Last index in current portfolio returns: {current_portfolio_returns.index[-1]}")
+        current_portfolio_returns[-2:-1].to_csv(portfolio_returns_filename, mode='a', header=False, index = True, date_format='%Y-%m-%d %H:%M:%S')
     
     #################### Checking in Drawdown ################
     
@@ -571,39 +624,42 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     
     current_allocation_results_df = pd.concat(current_allocation_strategy_map, axis=1).fillna(0).sum(axis=1).sort_index()
     print(f'Current allocation results df: {current_allocation_results_df}')
+    
     if not current_allocation_results_df.empty:
-        last_index = current_allocation_results_df.index.get_level_values(0).unique()[-1] 
-        print(f'Last index of current allocation results df: {last_index}')       
-        current_allocation = current_allocation_results_df.loc[last_index]
+        last_second_index = current_allocation_results_df.index.get_level_values(0).unique()[-2:-1] 
+        print(f'Last Second index of current allocation results df: {last_second_index}')       
+        current_allocation = current_allocation_results_df.loc[last_second_index].reset_index(level=0, drop=True)
         print(f'Current Allocations: {current_allocation}')
+        last_index = current_allocation_results_df.index.get_level_values(0).unique()[-1]
+        last_allocation = current_allocation_results_df.loc[last_index]
+        print(f'Last Allocation: {last_allocation}')
     else:
         print(f'Current allocation results df is empty')
 
     ######################### Universe ##########################
-    # Extract current universes from selected_strategy
+    # Extract current universes from the current allocation second last index
     print('Getting Universe')
-    current_universes = [
-        set(value.current_universe)  # Convert each universe to a set for comparison
-        for key, value in live_selected_strategy.items()
-        if key != 'cash_strat'
-    ]
-    print(f'Current Universes : {current_universes}')
+    #We can't get the current universe from the strategy instances, because it has also analyzed the current non fully closed candle
+    print(f"Last Second Index: {last_second_index.tz_localize('UTC')[0]}")
+    last_hour = pd.Timestamp(dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours = 1))
+    print(f'Last Hour in UTC: {last_hour}')
+    
+    if last_second_index.tz_localize('UTC')[0] == last_hour:
+        current_universe = list(current_allocation.index)
+    else:
+        current_universe = []
 
-    # Remove overlaps between universes
-    # Start with the first set and iteratively remove overlaps
-    unique_universes = []
-    for universe in current_universes:
-        for other_universe in unique_universes:
-            universe -= other_universe  # Remove overlapping strings
-        unique_universes.append(universe)
+    print(f'Current Universe: {current_universe}')
+    
+    #Liquidated coins from sell signals
+    #First get the list of coins in the last date then compare it with the current universe, if any coins from the current universe are not in last universe (meaning that they were removed)
+        # then we would append them to a list. But if they are added coins in the last universe, then we would not touch them as they might be false signals
+    last_universe = list(last_allocation.index)
+    print(f'Last Universe: {last_universe}')
 
-    # Convert sets back to lists (if needed)
-    unique_universes = [list(universe) for universe in unique_universes]
-
-    flattened_universe = [item for sublist in unique_universes for item in sublist]
-    print(f'Current Universe: {flattened_universe}')
-
-
+    final_universe = [coin for coin in current_universe if coin in last_universe]
+    print(f'Final Universe: {final_universe}')
+    
     symbols_in_current_portfolio = symbols_in_current_balance()
     print(f'Symbols in Current balance: {symbols_in_current_portfolio}')
     
@@ -612,7 +668,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     if symbols_in_current_portfolio:
         symbols_not_in_universe = [
             symbol.replace('USDT', '').replace('USD', '') for symbol in symbols_in_current_portfolio
-            if symbol not in flattened_universe
+            if symbol not in final_universe
         ]
         print(f"Liquidating {symbols_not_in_universe}...")
         liquidate(symbols_not_in_universe)
@@ -620,32 +676,40 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     else:
         print("symbols_in_current_portfolio is None or empty.")
 
-    print(f'Current_universe: {flattened_universe}')
-    for coin in flattened_universe:
+    print(f'Current_universe: {final_universe}')
+    for coin in final_universe:
         formatted_coin = coin.replace('USDT', '').replace('USD', '')
         coin_for_order = coin.replace('USDT', '/USD')
         coin_balance = get_coin_balance(formatted_coin)
         current_coin_allocation = current_allocation[coin]
+        last_coin_allocation = last_allocation[coin]
         
         if coin_balance is None:
             coin_balance = 0
         
         print(f'Current coin allocation: {current_coin_allocation}')
+        print(f'Last coin allocation: {last_coin_allocation}')
         print(f'Coin balance: {coin_balance}')
         to_add = round(current_coin_allocation - coin_balance, 7)
+        
+        to_sell = round(last_coin_allocation - current_coin_allocation, 7) 
+        #last_coin_allocation is only going to be used for selling assets, as it represents the uncompleted candle,
+        # where sell signals might occur (as the sell signals are based on the current high and low of the candle)
         
         
         if to_add > 0 and to_add < get_usd_left():
             print(f"Adding {to_add} {formatted_coin} to the portfolio...")
             buy(to_add, coin_for_order)
+        elif to_sell < 0 and coin_balance >= abs(to_sell): #This will work in case we have a minimum position more than the threshold, so the coin is still in the universe
+            print(f"Selling {-to_sell} {formatted_coin} from the portfolio...")
+            sell(-to_sell, coin_for_order)
         elif to_add < 0 and coin_balance >= abs(to_add):
             print(f"Selling {-to_add} {formatted_coin} from the portfolio...")
             sell(-to_add, coin_for_order)
         else:
             print(f"Nothing to add because {to_add} in coin's currency is almost $0.0")
             
-        
-        
+
 def main_loop():
     counter = 0
     best_params = None
@@ -657,35 +721,38 @@ def main_loop():
     optimization_task = None
     portfolio_optimization_task = None
     portfolio_management_task = None
+    
+    optimization_flag = False
+    portfolio_optimization_flag = False
+    portfolio_management_flag = False
 
     while True:
-        print(f"\n--- Starting loop iteration {counter} ---")
-
         # Start optimization tasks in the background if not already running
-        if counter % strategy_optimization_frequency == 0 and optimization_task is None:
+        if counter % strategy_optimization_frequency == 0 and optimization_task is None and not optimization_flag:
+            print('Performing Optimization...')
             optimization_task = perform_optimization()
+            optimization_flag = True
 
-        if counter % portfolio_optimization_frequency == 0 and portfolio_optimization_task is None:
+        if counter % portfolio_optimization_frequency == 0 and portfolio_optimization_task is None and not portfolio_optimization_flag:
+            print('Performing Portfolio Optimization...')
             portfolio_optimization_task = perform_portfolio_optimization()
+            portfolio_optimization_flag = True
             
 
         # Perform strategy execution at the beginning of each hour
-        now = dt.datetime.now()
-        if now.minute == 0:  # Check if it's the start of a new hour
-            print("Starting strategy execution at the beginning of the hour...")
-            if best_params is not None and best_weights is not None and live_selected_strategy is not None:
-                in_drawdown = perform_portfolio_rm().result()
-                run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
-                # Increment counter 
-                counter += 1
-                print(f"Completed loop iteration {counter}. Current state after tasks:")
-                print(f"  best_params: {best_params}")
-                print(f"  best_weights: {best_weights}")
-                print(f"  results_strategy_returns: {results_strategy_returns}")
-                print(f"  selected_strategy: {selected_strategy}")
-                print(f"  live_selected_strategy: {live_selected_strategy}")
-                print(f"  in_drawdown: {in_drawdown}")
-                print(f"--- End of loop iteration {counter} ---\n")
+        if best_params is not None and best_weights is not None and live_selected_strategy is not None:
+            print(f'Performing Portfolio RM...')
+            in_drawdown = perform_portfolio_rm()
+            print(f'In Drawdown: {in_drawdown}')
+            run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
+            # Increment counter 
+            counter += 1
+            print(f"Completed loop iteration {counter}")
+            
+            # After strategy run, reset flags to allow tasks to run in the next loop
+            optimization_flag = False
+            portfolio_optimization_flag = False
+            portfolio_management_flag = False
 
         # Check if optimization tasks are complete
         if optimization_task is not None and optimization_task.done():
@@ -699,11 +766,16 @@ def main_loop():
             portfolio_optimization_task = None  # Reset the task for the next round
 
         # Check if portfolio management task is complete
-        if counter % portfolio_management_frequency == 0 and results_strategy_returns is not None:
+        if counter % portfolio_management_frequency == 0 and results_strategy_returns is not None and portfolio_management_task is None\
+            and not portfolio_management_flag:
             print("Starting portfolio management task...")
             portfolio_management_task = perform_portfolio_management(results_strategy_returns)
+            portfolio_management_flag = True
+        
+        if portfolio_management_task is not None and portfolio_management_task.done():
             selected_strategy, live_selected_strategy = portfolio_management_task.result()
             print(f"Portfolio management task completed. Updated selected_strategy: {selected_strategy}, live_selected_strategy: {live_selected_strategy}")
+            portfolio_management_task = None  # Reset the task for the next round
 
         # Small sleep to avoid maxing out the CPU while waiting for the next loop iteration
         time.sleep(1)
