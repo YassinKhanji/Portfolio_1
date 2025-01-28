@@ -25,6 +25,7 @@ from last_days_low import Last_Days_Low
 from portfolio_management import Portfolio_Management
 from portfolio_optimization import Portfolio_Optimization
 from portfolio_risk_management import Portfolio_RM
+
 api_key = 'yqPWrtVuElaIExKmIp/E/upTOz/to1x7tC3JoFUxoSTKWCOorT6ifF/B'
 api_secret = 'L8h5vYoAu/jpQiBROA9yKN41FGwZAGGVF3nfrC5f5EiaoF7VksruPVdD7x1VOwnyyNCMdrGnT8lP4xHTiBrYMQ=='
 exchange = ccxt.kraken({
@@ -52,7 +53,7 @@ market_data_filename = 'market_data.csv'
 strategy_data_filename = 'strategy_returns.csv'
 portfolio_returns_filename = "portfolio_returns.csv"
 timeframe = '1h'
-symbols_to_trade = get_symbols_for_bot()
+symbols_to_trade = get_symbols_for_bot()[:20]
 for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD']:
     if symbol not in symbols_to_trade:
         symbols_to_trade.append(symbol)
