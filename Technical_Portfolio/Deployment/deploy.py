@@ -25,7 +25,6 @@ from last_days_low import Last_Days_Low
 from portfolio_management import Portfolio_Management
 from portfolio_optimization import Portfolio_Optimization
 from portfolio_risk_management import Portfolio_RM
-
 api_key = 'yqPWrtVuElaIExKmIp/E/upTOz/to1x7tC3JoFUxoSTKWCOorT6ifF/B'
 api_secret = 'L8h5vYoAu/jpQiBROA9yKN41FGwZAGGVF3nfrC5f5EiaoF7VksruPVdD7x1VOwnyyNCMdrGnT8lP4xHTiBrYMQ=='
 exchange = ccxt.kraken({
@@ -58,7 +57,7 @@ for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD']:
     if symbol not in symbols_to_trade:
         symbols_to_trade.append(symbol)
 # symbols_to_trade = ['BTCUSD', 'ETHUSD']
-# symbols_to_trade = ['DYMUSD', 'BONKUSD', 'ZECUSD', 'MINAUSD', 'API3USD', 'SOLUSD', 'LTCUSD', 'ENJUSD', 'BLURUSD', 'RENDERUSD', 'ETCUSD', 'POLUSD', 'LINKUSD', 'FORTHUSD', 'STGUSD', 'LRCUSD', 'ZROUSD', 'XRPUSD', 'DENTUSD', 'SYNUSD', 'FXSUSD', 'DOGEUSD', 'CTSIUSD', 'SHIBUSD', 'WIFUSD', 'TURBOUSD', 'LPTUSD', 'ANKRUSD', 'STXUSD', 'BANDUSD', 'FTMUSD', 'JASMYUSD', 'AUDIOUSD', 'RAREUSD', 'TIAUSD', 'STRKUSD', 'OPUSD', 'FLOWUSD', 'STORJUSD', 'ARKMUSD', 'ENSUSD', 'ICXUSD', 'LSKUSD', 'CHRUSD', 'ARBUSD', 'DASHUSD', 'ZKUSD', 'BTCUSD', 'GMTUSD', 'ATOMUSD', 'ETHUSD']
+# symbols_to_trade = ['OGNUSD', 'JASMYUSD', 'ATOMUSD', 'SHIBUSD', 'DASHUSD', 'PONDUSD', 'RENDERUSD', 'STXUSD', 'BCHUSD', 'SYNUSD', 'ALGOUSD', 'DOGEUSD', 'NEARUSD', 'STGUSD', 'BTCUSD', 'GLMRUSD', 'SANDUSD', 'DENTUSD', 'FETUSD', 'SUIUSD', 'XRPUSD', 'ETHUSD']
 
 def format_symbols(symbols):
     """Converts the symbols to a format that the exchange understands."""
@@ -713,6 +712,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
 
 def main_loop():
     counter = 0
+    next_run_time = dt.datetime.now() + dt.timedelta(hours=1)
     best_params = None
     best_weights = None
     results_strategy_returns = None
@@ -728,6 +728,8 @@ def main_loop():
     portfolio_management_flag = False
 
     while True:
+        current_time = dt.datetime.now()
+        
         # Start optimization tasks in the background if not already running
         if counter % strategy_optimization_frequency == 0 and optimization_task is None and not optimization_flag:
             print('Performing Optimization...')
@@ -778,6 +780,12 @@ def main_loop():
             print(f"Portfolio management task completed. Updated selected_strategy: {selected_strategy}, live_selected_strategy: {live_selected_strategy}")
             portfolio_management_task = None  # Reset the task for the next round
 
+            # Increment counter and calculate next run
+        if current_time >= next_run_time:
+            counter += 1
+            print(f"Completed loop iteration {counter}")
+            next_run_time = current_time + dt.timedelta(hours=1)
+            
         # Small sleep to avoid maxing out the CPU while waiting for the next loop iteration
         time.sleep(1)
         
