@@ -748,9 +748,6 @@ def main_loop():
             in_drawdown = perform_portfolio_rm()
             print(f'In Drawdown: {in_drawdown}')
             run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
-            # Increment counter 
-            counter += 1
-            print(f"Completed loop iteration {counter}")
             
             # After strategy run, reset flags to allow tasks to run in the next loop
             optimization_flag = False
