@@ -30,7 +30,7 @@ class Fine_1():
         """
         df = df.copy().unstack()
         for coin in df.columns.get_level_values(1).unique():
-            df[f'ema_{ema_window}', coin] = ta.ema(df['close', coin], length=ema_window)
+            df[f'ema_{ema_window}', coin] = ta.ema(df['htf_close', coin], length=ema_window)
         df = df.stack(future_stack = True)
         df['above_ema'] = (df['close'].fillna(0) > df[f'ema_{ema_window}'].fillna(0)).astype(int)
         
