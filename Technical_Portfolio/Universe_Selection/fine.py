@@ -30,12 +30,12 @@ class Fine_1():
         """
         df = df.copy().unstack()
         for coin in df.columns.get_level_values(1).unique():
-            df[f'ema_{ema_window}', coin] = ta.ema(df['htf_close', coin].shift(), length=ema_window) #We want the EMA starting the previous day, since today is still developing
+            df[f'ema_{ema_window}', coin] = ta.sma(df['close', coin], length=ema_window)
         df = df.stack(future_stack = True)
-        df['above_ema'] = (df['close'].fillna(0).shift() > df[f'ema_{ema_window}'].fillna(0)).astype(int) #We want the value of the previous day
+        df['above_ema'] = (df['close'].fillna(0) > df[f'ema_{ema_window}'].fillna(0)).astype(int) #We want the value of the previous day
         
-        df = df.unstack()
-        df['above_ema'] = df['above_ema'].shift(periods = 1, freq = low_freq) #We want the value of the previous day
-        df = df.stack(future_stack= True)
+        # df = df.unstack()
+        # df['above_ema'] = df['above_ema'].shift(periods = 1, freq = low_freq) #We want the value of the previous day
+        # df = df.stack(future_stack= True)
         
         return df

@@ -54,7 +54,7 @@ class Last_Days_Low():
         self.param_space = {
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),
-        'ema_window': Integer(5, 100),
+        'ema_window': Integer(5, 500),
         'hourly_lookback': Integer(1, 5),
         'daily_lookback': Integer(1, 5),
         '_min_pos': Real(0, 0.75),

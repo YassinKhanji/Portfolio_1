@@ -54,7 +54,7 @@ class Sprtrnd_Breakout():
         self.param_space = {
         'std_window': Integer(5, 30),
         'mean_window': Integer(5, 30),
-        'ema_window': Integer(5, 100),
+        'ema_window': Integer(5, 500),
         'str_length': Integer(5, 50),
         'str_mult': Integer(1, 5),
         '_min_pos': Real(0, 0.75),
