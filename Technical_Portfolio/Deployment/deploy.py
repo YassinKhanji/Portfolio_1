@@ -7,8 +7,8 @@ from unsync import unsync
 import datetime as dt
 import sys
 from concurrent.futures import ThreadPoolExecutor
-import re
 import warnings
+import copy
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
 # Ensure the directories are in the system path
@@ -34,9 +34,9 @@ exchange = ccxt.kraken({
         'defaultType': 'spot',  # Ensure only spot markets are considered
     }
 })
-train_size = 500
-test_size = 500
-step_size = 500
+train_size = 2500
+test_size = 2500
+step_size = 2500
 low_corr_thresh = 1.0
 strategy_optimization_frequency = step_size
 portfolio_optimization_frequency = 300 #Every 2 Weeks
@@ -45,19 +45,19 @@ counter = 0
 symbols_to_liquidate = None
 data_instance = None
 drawdown_threshold = -0.15
-max_rows_market_data = market_data_size = 2000
-length_of_data_to_run_strategy = 500
+max_rows_market_data = market_data_size = 5200
+length_of_data_to_run_strategy = 2500
 _symbols_threshold = 750 #Get new symbols every month
 market_data_filename = 'market_data.csv'
 strategy_data_filename = 'strategy_returns.csv'
 portfolio_returns_filename = "portfolio_returns.csv"
 timeframe = '1h'
-symbols_to_trade = get_symbols_for_bot()[:20]
-for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD']:
-    if symbol not in symbols_to_trade:
-        symbols_to_trade.append(symbol)
-# symbols_to_trade = ['BTCUSD', 'ETHUSD']
-# symbols_to_trade = ['OGNUSD', 'JASMYUSD', 'ATOMUSD', 'SHIBUSD', 'DASHUSD', 'PONDUSD', 'RENDERUSD', 'STXUSD', 'BCHUSD', 'SYNUSD', 'ALGOUSD', 'DOGEUSD', 'NEARUSD', 'STGUSD', 'BTCUSD', 'GLMRUSD', 'SANDUSD', 'DENTUSD', 'FETUSD', 'SUIUSD', 'XRPUSD', 'ETHUSD']
+# symbols_to_trade = get_symbols_for_bot()
+# for symbol in ['XRPUSD', 'ETHUSD', 'BTCUSD', 'LINKUSD', 'SOLUSD', 'NEARUSD']:
+#     if symbol not in symbols_to_trade:
+#         symbols_to_trade.append(symbol)
+symbols_to_trade = ['XRPUSD', 'ETHUSD', 'BTCUSD', 'LINKUSD', 'SOLUSD', 'NEARUSD', 'ADAUSD', 'LTCUSD', 'ICXUSD', 'GMTUSD', 'ETCUSD', 'AVAXUSD', 'CELRUSD', 'PEPEUSD', 'DOGEUSD', 'SHIBUSD', 'OPUSD', 'ATOMUSD', 'ALGOUSD', 'JASMYUSD', 'EGLDUSD', 'XTZUSD', 'DOTUSD']
+# symbols_to_trade = ['BTCUSD']
 
 def format_symbols(symbols):
     """Converts the symbols to a format that the exchange understands."""
@@ -504,7 +504,21 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     print(f"Live Selected Strategy: {live_selected_strategy}")
     print(f'Best Params: {best_params}')
     
-    
+    ################### Modify Best Params ###################
+    #Modify the best_params to put min_pos parameter as 0 for all strategies if we are in a drawdown
+    #This ensures that we are not holding any positions in a drawdown in case we are in a crashing market 
+    # that is not favorable for the strategies and that takes time to recover from
+    params = None
+    if in_drawdown:
+        params = copy.deepcopy(best_params)  # Only copy when needed
+        for key, value in params.items():
+            value['_min_pos'] = 0.0
+        print(f'Params are changed since we are in_drawdown: {params}')
+    else:
+        params = best_params  # Use directly if no drawdown
+        print(f'Params are NOT changed since we are NOT in_drawdown: {params}')
+
+
     ################### Max Allocation ###################
     #Store the max allocation for each strategy in a dictionary
     max_allocation_map = {
@@ -534,13 +548,13 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     
     
     #Run each strategy on enough data points and get the total portfolio value
-    data_to_run_strategy = data.unstack().iloc[-2 * length_of_data_to_run_strategy:].stack(future_stack = True)
+    data_to_run_strategy = data.unstack().iloc[-5 * length_of_data_to_run_strategy:].stack(future_stack = True)
     print(f'Data to run the strategy on: {data_to_run_strategy}')
     
     
     ################### Running Strategy on Data ###################
     current_strategy_results = {
-        key: value.trading_strategy(data_to_run_strategy, best_params[key])
+        key: value.trading_strategy(data_to_run_strategy, params[key])
         for key, value in live_selected_strategy.items()
         if key != 'cash_strat'
     }
@@ -583,7 +597,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     current_strategy_returns_df = current_strategy_returns_df[~current_strategy_returns_df.index.duplicated(keep='last')]
     
     if not os.path.isfile(strategy_data_filename) or os.path.getsize(strategy_data_filename) == 0:
-        current_strategy_returns_df[:-1].to_csv(strategy_data_filename)
+        current_strategy_returns_df[-2:-1].to_csv(strategy_data_filename)
         
     elif pd.read_csv(strategy_data_filename, index_col=[0], parse_dates=[0]).index[-1] != current_strategy_returns_df.index[-2:-1]:
         print(f"Last index in Strategy data: {pd.read_csv(strategy_data_filename, index_col=[0], parse_dates=[0]).index[-1]}")
@@ -596,7 +610,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     current_portfolio_returns = current_strategy_returns_df.dot(best_weights)
     print(f'Current Portfolio Returns: {current_portfolio_returns}')
     if not os.path.isfile(portfolio_returns_filename) or os.path.getsize(portfolio_returns_filename) == 0:
-        current_portfolio_returns[:-1].to_csv(portfolio_returns_filename) #[:-1] to exclude the last row which is the current price, and not a fully closed candle
+        current_portfolio_returns[-2:-1].to_csv(portfolio_returns_filename) #[:-1] to exclude the last row which is the current price, and not a fully closed candle
         
     elif pd.read_csv(portfolio_returns_filename, index_col=[0], parse_dates=[0]).index[-1] != current_portfolio_returns.index[-2:-1]:
         print(f"Last index in Portfolio data: {pd.read_csv(portfolio_returns_filename, index_col=[0], parse_dates=[0]).index[-1]}")
@@ -697,7 +711,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
         # where sell signals might occur (as the sell signals are based on the current high and low of the candle)
         
         
-        if to_add > 0 and to_add < get_usd_left():
+        if to_add > 0:
             print(f"Adding {to_add} {formatted_coin} to the portfolio...")
             buy(to_add, coin_for_order)
         elif to_sell < 0 and coin_balance >= abs(to_sell): #This will work in case we have a minimum position more than the threshold, so the coin is still in the universe
@@ -712,7 +726,7 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
 
 def main_loop():
     counter = 0
-    next_run_time = dt.datetime.now() + dt.timedelta(hours=1)
+    next_run_time = dt.datetime.now() + dt.timedelta(hours=6)
     best_params = None
     best_weights = None
     results_strategy_returns = None
@@ -730,6 +744,23 @@ def main_loop():
     while True:
         current_time = dt.datetime.now()
         
+        # Perform strategy execution at the beginning of each hour
+        if best_params is not None and best_weights is not None and live_selected_strategy is not None:
+            print(f'Performing Portfolio RM...')
+            in_drawdown = perform_portfolio_rm()
+            print(f'In Drawdown: {in_drawdown}')
+            
+            run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
+            
+            # After strategy run, reset flags to allow tasks to run in the next loop
+            optimization_flag = False
+            portfolio_optimization_flag = False
+            portfolio_management_flag = False
+            
+            if counter == 0:
+                counter += 1  # Increment counter to avoid running the same tasks in the next loop
+                print(f"Completed loop iteration {counter}")
+        
         # Start optimization tasks in the background if not already running
         if counter % strategy_optimization_frequency == 0 and optimization_task is None and not optimization_flag:
             print('Performing Optimization...')
@@ -740,19 +771,6 @@ def main_loop():
             print('Performing Portfolio Optimization...')
             portfolio_optimization_task = perform_portfolio_optimization()
             portfolio_optimization_flag = True
-            
-
-        # Perform strategy execution at the beginning of each hour
-        if best_params is not None and best_weights is not None and live_selected_strategy is not None:
-            print(f'Performing Portfolio RM...')
-            in_drawdown = perform_portfolio_rm()
-            print(f'In Drawdown: {in_drawdown}')
-            run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
-            
-            # After strategy run, reset flags to allow tasks to run in the next loop
-            optimization_flag = False
-            portfolio_optimization_flag = False
-            portfolio_management_flag = False
 
         # Check if optimization tasks are complete
         if optimization_task is not None and optimization_task.done():
@@ -778,7 +796,7 @@ def main_loop():
             portfolio_management_task = None  # Reset the task for the next round
 
             # Increment counter and calculate next run
-        if current_time >= next_run_time:
+        if current_time >= next_run_time and best_params is not None and best_weights is not None and live_selected_strategy is not None:
             counter += 1
             print(f"Completed loop iteration {counter}")
             next_run_time = current_time + dt.timedelta(hours=1)
@@ -786,4 +804,4 @@ def main_loop():
         # Small sleep to avoid maxing out the CPU while waiting for the next loop iteration
         time.sleep(1)
         
-# main_loop()
+main_loop()
