@@ -28,11 +28,27 @@ class Fine_1():
             df: pd.DataFrame (stacked)
             ema_window: int
         """
-        df = df.copy().unstack()
-        for coin in df.columns.get_level_values(1).unique():
-            df[f'ema_{ema_window}', coin] = ta.sma(df['close', coin], length=ema_window)
-        df = df.stack(future_stack = True)
-        df['above_ema'] = (df['close'].fillna(0) > df[f'ema_{ema_window}'].fillna(0)).astype(int) #We want the value of the previous day
+        df_1 = df.copy()
+        htf_df = df_1.groupby(level = -1).resample(low_freq, level = 0).agg({
+            'open': 'first',    # First value of the day
+            'high': 'max',      # Maximum value of the day
+            'low': 'min',       # Minimum value of the day
+            'close': 'last',    # Last value of the day
+            'volume': 'sum',     # Total volume of the day
+            'volume_in_dollars': 'sum' # Total volume in dollars of the day
+        })
+        htf_df.columns = [f'fine_htf_{col}' for col in htf_df.columns]
+        htf_df = htf_df.reorder_levels([1, 0], axis = 0).sort_index(axis = 0)
+        htf_df = htf_df.unstack()
+        for coin in htf_df.columns.get_level_values(1).unique():
+            htf_df[f'ema_{ema_window}', coin] = ta.ema(htf_df['fine_htf_close', coin], length=ema_window)
+            
+        htf_df = htf_df.stack(future_stack = True)
+        htf_df['above_ema'] = (htf_df['fine_htf_close'].fillna(0) > htf_df[f'ema_{ema_window}'].fillna(0)).astype(int) #We want the value of the previous day
+        htf_df['above_ema'] = htf_df['above_ema'].shift()
+        #Now we want to reindex to the original data
+        df = df_1.join(htf_df, how = 'outer')
+        df = df.unstack().ffill().stack(future_stack = True)
         
         # df = df.unstack()
         # df['above_ema'] = df['above_ema'].shift(periods = 1, freq = low_freq) #We want the value of the previous day
