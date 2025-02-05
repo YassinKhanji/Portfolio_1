@@ -316,8 +316,9 @@ def buy(to_add, coin):
     try:
         #Get the minimum amount to buy
         min_amount = exchange.markets[coin]['limits']['amount']['min']
+        coin_balance = get_coin_balance(coin.replace('/USD', ''))
         
-        if to_add < min_amount:
+        if to_add < min_amount and coin_balance < min_amount: #This ensures that we don't buy every time a small change occurs in the allocation
             print(f"Amount to add is less than the minimum amount to buy: {min_amount}")
             to_add = min_amount
             
@@ -496,6 +497,7 @@ def perform_portfolio_optimization():
     return best_weights, results_strategy_returns
 
 def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown):
+    
     #Get the current_total_balance
     current_total_balance = get_portfolio_value()
     
@@ -538,6 +540,11 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     print('Loading Data...')
     data = load_data_from_csv()
     print('Data Loaded: ', data)
+    
+    #This to make sure that the latest hour that we are trying to get the allocations from matches the last hour in the data
+    last_hour = pd.Timestamp(dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours = 1))
+    print(f'Last Hour in UTC: {last_hour}')
+    
     print('Completing missing data...')
     complete_missing_data(data_instance, data)
     
@@ -655,7 +662,6 @@ def run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
     print('Getting Universe')
     #We can't get the current universe from the strategy instances, because it has also analyzed the current non fully closed candle
     print(f"Last Second Index: {last_second_index.tz_localize('UTC')[0]}")
-    last_hour = pd.Timestamp(dt.datetime.now(dt.UTC).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours = 1))
     print(f'Last Hour in UTC: {last_hour}')
     
     if last_second_index.tz_localize('UTC')[0] == last_hour:
@@ -746,10 +752,11 @@ def main_loop():
         
         # Perform strategy execution at the beginning of each hour
         if best_params is not None and best_weights is not None and live_selected_strategy is not None:
+            # if counter >= step_size:
             print(f'Performing Portfolio RM...')
             in_drawdown = perform_portfolio_rm()
             print(f'In Drawdown: {in_drawdown}')
-            
+        
             run_strategy(best_params, best_weights, live_selected_strategy, in_drawdown)
             
             # After strategy run, reset flags to allow tasks to run in the next loop
