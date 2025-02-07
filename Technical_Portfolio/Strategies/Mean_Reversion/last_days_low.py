@@ -238,7 +238,7 @@ class Last_Days_Low():
         print('Position Calculated')
 
         mt = Manage_Trade(_df)
-        _df = mt.erw_actual_allocation(max_perc_risk, self.max_dollar_allocation)
+        _df = mt.erw_actual_allocation(max_perc_risk, self.max_dollar_allocation, _max_pos)
         print('Manage Trade Applied')
         
         _df = cal.update_all(_df)

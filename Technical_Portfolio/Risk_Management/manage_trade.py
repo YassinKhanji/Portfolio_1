@@ -60,7 +60,7 @@ class Manage_Trade():
     
 
     ############# Weighting Methods #############
-    def erw_actual_allocation(self, max_percent_risk, max_dollar_allocation):
+    def erw_actual_allocation(self, max_percent_risk, max_dollar_allocation, max_pos):
         """
         Assume a stacked dataframe with the session stop loss calculated.
         Uses the distance to the session stop loss to calculate the actual allocation.
@@ -76,7 +76,7 @@ class Manage_Trade():
 
 
         _df['actual_allocation'] = max_dollar_risk_per_trade / _df['distance_to_stop']
-        _df['actual_allocation'] = _df['actual_allocation'].clip(upper = max_dollar_allocation, lower = 0)
+        _df['actual_allocation'] = _df['actual_allocation'].clip(upper = max_dollar_allocation * max_pos, lower = 0)
         #Since we are not gonna use any leverage, we can't allocate more than the max_dollar_allocation
         #we can't allocate less than 0
 
